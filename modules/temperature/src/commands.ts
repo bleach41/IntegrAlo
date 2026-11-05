@@ -31,6 +31,8 @@ export type Algorithm = z.infer<typeof AlgorithmSchema>;
 export const ControlParamsSchema = z.object({
   algorithm: AlgorithmSchema,
   hysteresis: numberFromManifest('hysteresis'),
+  minOnTimeS: numberFromManifest('minOnTimeS'),
+  minOffTimeS: numberFromManifest('minOffTimeS'),
   kp: numberFromManifest('kp'),
   ki: numberFromManifest('ki'),
   samplePeriodMs: numberFromManifest('samplePeriodMs').int(),
@@ -69,6 +71,8 @@ export function defaultControlParams(): ControlParams {
   return ControlParamsSchema.parse({
     algorithm: enumParameter('algorithm').default,
     hysteresis: num('hysteresis'),
+    minOnTimeS: num('minOnTimeS'),
+    minOffTimeS: num('minOffTimeS'),
     kp: num('kp'),
     ki: num('ki'),
     samplePeriodMs: num('samplePeriodMs'),

@@ -14,6 +14,8 @@
     "setpointMax": { "type": "number", "unit": "°C", "default": 30 },
     "algorithm": { "type": "enum", "values": ["onoff", "pi"], "default": "onoff" },
     "hysteresis": { "type": "number", "unit": "°C", "min": 0.1, "max": 5, "default": 0.5 },
+    "minOnTimeS": { "type": "number", "unit": "s", "min": 0, "max": 1800, "default": 180 },
+    "minOffTimeS": { "type": "number", "unit": "s", "min": 0, "max": 1800, "default": 180 },
     "kp": { "type": "number", "unit": "%/°C", "min": 0, "default": 20 },
     "ki": { "type": "number", "unit": "%/(°C·s)", "min": 0, "default": 0.02 },
     "samplePeriodMs": { "type": "number", "unit": "ms", "min": 500, "max": 60000, "default": 2000 }

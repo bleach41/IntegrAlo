@@ -14,6 +14,8 @@ const { values } = parseArgs({
     initial: { type: 'string', default: '30' },
     hours: { type: 'string', default: '3' },
     disturbance: { type: 'string', default: 'off' },
+    hysteresis: { type: 'string' },
+    mintime: { type: 'string' },
     csv: { type: 'string' },
   },
 });
@@ -23,14 +25,19 @@ const state: NodeState = {
   ...base,
   mode: 'auto',
   setpoint: Number(values.setpoint),
-  params: { ...base.params, algorithm: values.algorithm as NodeState['params']['algorithm'] },
+  params: {
+    ...base.params,
+    algorithm: values.algorithm as NodeState['params']['algorithm'],
+    ...(values.hysteresis !== undefined && { hysteresis: Number(values.hysteresis) }),
+    ...(values.mintime !== undefined && { minOnTimeS: Number(values.mintime), minOffTimeS: Number(values.mintime) }),
+  },
   simulation: { ...base.simulation, disturbance: values.disturbance as NodeState['simulation']['disturbance'] },
 };
 
 const dtS = state.params.samplePeriodMs / 1000;
 const sim = new TemperatureSimulation(Number(values.initial));
 const rows = ['time_s,temperature_c,setpoint_c,output_pct,outdoor_c'];
-let switches = 0;
+let starts = 0;
 let lastOutput = 0;
 let lastTemp = Number(values.initial);
 const steps = Math.round((Number(values.hours) * 3600) / dtS);
@@ -38,7 +45,7 @@ const steps = Math.round((Number(values.hours) * 3600) / dtS);
 for (let i = 0; i < steps; i++) {
   const t = sim.tick(state, dtS);
   const output = t.output as number;
-  if ((output > 0) !== (lastOutput > 0)) switches++;
+  if (output > 0 && lastOutput === 0) starts++;
   lastOutput = output;
   lastTemp = t.temperature as number;
   rows.push([(i + 1) * dtS, t.temperature, t.setpoint, t.output, t.outdoorTemperature].join(','));
@@ -49,5 +56,6 @@ if (values.csv) {
 }
 console.log(
   `algorithm=${state.params.algorithm} hours=${values.hours} final=${lastTemp.toFixed(2)} °C ` +
-    `setpoint=${state.setpoint} °C on/off switches=${switches}${values.csv ? ` csv=${values.csv}` : ''}`,
+    `setpoint=${state.setpoint} °C starts=${starts} (${(starts / Number(values.hours)).toFixed(1)}/h)` +
+    `${values.csv ? ` csv=${values.csv}` : ''}`,
 );

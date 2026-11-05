@@ -29,10 +29,10 @@ export class TemperatureController {
       case 'manual':
         return state.manualOutput;
       default: {
-        const { algorithm, hysteresis, kp, ki } = state.params;
+        const { algorithm, hysteresis, minOnTimeS, minOffTimeS, kp, ki } = state.params;
         return algorithm === 'pi'
           ? this.pi.compute(temperatureC, state.setpoint, kp, ki, dtS)
-          : this.hysteresis.compute(temperatureC, state.setpoint, hysteresis);
+          : this.hysteresis.compute(temperatureC, state.setpoint, { hysteresisC: hysteresis, minOnTimeS, minOffTimeS }, dtS);
       }
     }
   }
