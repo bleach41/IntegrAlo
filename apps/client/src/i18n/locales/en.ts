@@ -5,6 +5,38 @@ const en: typeof es = {
   common: {
     signOut: 'Sign out',
     unexpectedError: 'Something went wrong. Please try again.',
+    back: 'Back',
+    yes: 'Yes',
+    no: 'No',
+    retry: 'Retry',
+  },
+  realtime: {
+    live: 'Live',
+    connecting: 'Connecting…',
+    offline: 'Offline',
+  },
+  dashboard: {
+    title: 'Nodes',
+    settings: 'Settings',
+    pending: 'Waiting for approval',
+    pendingHint: 'These devices announced themselves on the network. Approve them only if you recognise them.',
+    waitingApproval: 'Waiting for an engineer to approve it.',
+    nodeName: 'Name (optional)',
+    nodeNamePlaceholder: 'For example: Room 1',
+    approve: 'Approve',
+    empty: 'There are no approved nodes yet. Turn on a node on the same network and it will appear here for approval.',
+    online: 'Online',
+    offline: 'Offline',
+    noData: 'No readings yet',
+    updatedAt: 'Updated at {{time}}',
+    alarms_one: '{{count}} alarm',
+    alarms_other: '{{count}} alarms',
+    firmware: 'Firmware {{fw}}',
+    loadError: 'The nodes could not be loaded.',
+  },
+  settings: {
+    title: 'Settings',
+    account: 'Account',
   },
   brand: {
     tagline: 'Local supervision and control',
@@ -42,7 +74,6 @@ const en: typeof es = {
   },
   home: {
     greeting: 'Hello, {{name}}',
-    nextSteps: 'Nodes, their readings and alarms will appear here.',
   },
   roles: {
     engineer: 'Engineering',

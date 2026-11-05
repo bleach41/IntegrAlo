@@ -1,4 +1,5 @@
 import { Redirect, Stack } from 'expo-router';
+import { useRealtime } from '@/api/realtime';
 import { useSession } from '@/features/auth/session.store';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -9,5 +10,11 @@ export default function MainLayout() {
   if (!serverUrl) return <Redirect href="/connect" />;
   if (needsSetup) return <Redirect href="/setup" />;
   if (!user) return <Redirect href="/login" />;
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }} />;
+  return <SignedIn background={colors.canvas} />;
+}
+
+/** Separate component so the real-time hook only runs while signed in. */
+function SignedIn({ background }: { background: string }) {
+  useRealtime();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: background } }} />;
 }

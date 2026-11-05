@@ -3,6 +3,38 @@ const es = {
   common: {
     signOut: 'Cerrar sesión',
     unexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+    back: 'Volver',
+    yes: 'Sí',
+    no: 'No',
+    retry: 'Reintentar',
+  },
+  realtime: {
+    live: 'En vivo',
+    connecting: 'Conectando…',
+    offline: 'Sin conexión',
+  },
+  dashboard: {
+    title: 'Nodos',
+    settings: 'Ajustes',
+    pending: 'Pendientes de aprobación',
+    pendingHint: 'Estos dispositivos se anunciaron en la red. Apruébalos solo si los reconoces.',
+    waitingApproval: 'Esperando aprobación de ingeniería.',
+    nodeName: 'Nombre (opcional)',
+    nodeNamePlaceholder: 'Por ejemplo: Habitación 1',
+    approve: 'Aprobar',
+    empty: 'Todavía no hay nodos aprobados. Enciende un nodo en la misma red y aparecerá aquí para aprobarlo.',
+    online: 'En línea',
+    offline: 'Fuera de línea',
+    noData: 'Sin lecturas todavía',
+    updatedAt: 'Actualizado a las {{time}}',
+    alarms_one: '{{count}} alarma',
+    alarms_other: '{{count}} alarmas',
+    firmware: 'Firmware {{fw}}',
+    loadError: 'No se pudieron cargar los nodos.',
+  },
+  settings: {
+    title: 'Ajustes',
+    account: 'Cuenta',
   },
   brand: {
     tagline: 'Supervisión y control local',
@@ -40,7 +72,6 @@ const es = {
   },
   home: {
     greeting: 'Hola, {{name}}',
-    nextSteps: 'Aquí aparecerán los nodos, sus lecturas y las alarmas.',
   },
   roles: {
     engineer: 'Ingeniería',

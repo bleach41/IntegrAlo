@@ -1,39 +1,61 @@
+import { PERMISSIONS, hasPermission } from '@integralo/contract';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
-import { Brand, Button, Card, Screen } from '@/components/ui';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { useModules, useNodes, useOpenAlarms } from '@/api/queries';
+import { TopBar } from '@/components/TopBar';
+import { Button, Card, Screen } from '@/components/ui';
 import { useSession } from '@/features/auth/session.store';
-import { PreferencesCard } from '@/features/preferences/PreferencesCard';
+import { NodeCard } from '@/features/nodes/NodeCard';
+import { PendingNodeCard } from '@/features/nodes/PendingNodeCard';
+import { useTheme } from '@/theme/ThemeProvider';
 
-/** Temporary home: confirms the session; the node dashboard comes next. */
-export default function HomeScreen() {
-  const { t, i18n } = useTranslation();
-  const user = useSession((s) => s.user);
-  const serverUrl = useSession((s) => s.serverUrl);
-  const logout = useSession((s) => s.logout);
+/** Dashboard: nodes waiting for approval and approved nodes with live readings. */
+export default function DashboardScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const permissions = useSession((s) => s.user?.permissions ?? []);
+  const nodes = useNodes();
+  const modules = useModules();
+  const alarms = useOpenAlarms();
 
-  async function signOut() {
-    await logout();
-    router.replace('/login');
-  }
-
-  // Custom roles created later have no translation: their id is shown instead.
-  const roleKey = `roles.${user?.roleId ?? ''}`;
-  const role = i18n.exists(roleKey) ? t(roleKey as 'roles.user') : (user?.roleId ?? '');
+  const pending = nodes.data?.filter((n) => n.approval === 'pending') ?? [];
+  const approved = nodes.data?.filter((n) => n.approval === 'approved') ?? [];
+  const manifestOf = (moduleId: string) => modules.data?.find((m) => m.id === moduleId);
+  const alarmsOf = (nodeId: string) => alarms.data?.filter((a) => a.nodeId === nodeId && a.state !== 'closed').length ?? 0;
 
   return (
-    <Screen centered>
-      <Brand />
-      <Card>
-        <Text className="text-xl font-semibold text-ink">{t('home.greeting', { name: user?.username ?? '' })}</Text>
-        <View className="mt-2 self-start rounded-full bg-accent/15 px-3 py-1">
-          <Text className="text-xs font-semibold text-accent">{role}</Text>
+    <Screen>
+      <TopBar title={t('dashboard.title')} action={{ label: t('dashboard.settings'), onPress: () => router.push('/settings') }} />
+
+      {nodes.isPending ? <ActivityIndicator color={colors.accent} className="mt-10" /> : null}
+
+      {nodes.isError ? (
+        <Card>
+          <Text className="text-sm text-danger">{t('dashboard.loadError')}</Text>
+          <Button label={t('common.retry')} onPress={() => void nodes.refetch()} variant="ghost" />
+        </Card>
+      ) : null}
+
+      {pending.length > 0 ? (
+        <View className="mb-2">
+          <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-warning">{t('dashboard.pending')}</Text>
+          <Text className="mb-3 text-xs text-muted">{t('dashboard.pendingHint')}</Text>
+          {pending.map((node) => (
+            <PendingNodeCard key={node.id} node={node} canApprove={hasPermission(permissions, PERMISSIONS.nodesApprove)} />
+          ))}
         </View>
-        <Text className="mt-4 text-sm leading-5 text-muted">{t('home.nextSteps')}</Text>
-        <Text className="mt-2 text-xs text-muted">{t('connect.current', { url: serverUrl ?? '' })}</Text>
-        <Button label={t('common.signOut')} onPress={signOut} variant="ghost" />
-      </Card>
-      <PreferencesCard />
+      ) : null}
+
+      {nodes.isSuccess && approved.length === 0 ? (
+        <Card>
+          <Text className="text-sm leading-5 text-muted">{t('dashboard.empty')}</Text>
+        </Card>
+      ) : null}
+
+      {approved.map((node) => (
+        <NodeCard key={node.id} node={node} manifest={manifestOf(node.module)} alarmCount={alarmsOf(node.id)} />
+      ))}
     </Screen>
   );
 }
