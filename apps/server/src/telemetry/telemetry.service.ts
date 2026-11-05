@@ -7,11 +7,9 @@ import { DatabaseService } from '../database/database.service';
 import { MqttService } from '../mqtt/mqtt.service';
 import { NodesService } from '../nodes/nodes.service';
 
-export interface TelemetrySample {
-  receivedAt: number;
-  seq: number;
-  values: Record<string, TelemetryValue>;
-}
+import type { TelemetrySample } from '@integralo/contract';
+
+export type { TelemetrySample };
 
 const DAY_MS = 86_400_000;
 const PURGE_INTERVAL_MS = 3_600_000;

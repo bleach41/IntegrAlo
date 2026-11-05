@@ -20,17 +20,9 @@ import { MqttService } from '../mqtt/mqtt.service';
 import { NodesService } from '../nodes/nodes.service';
 import { ModuleRegistryService } from '../registry/module-registry.service';
 
-export interface CommandRecord {
-  id: string;
-  nodeId: string;
-  type: string;
-  payload: Record<string, unknown>;
-  status: CommandStatus;
-  reason: string | null;
-  state: Record<string, TelemetryValue> | null;
-  sentAt: number;
-  resolvedAt: number | null;
-}
+import type { CommandRecord } from '@integralo/contract';
+
+export type { CommandRecord };
 
 interface CommandRow {
   id: string;

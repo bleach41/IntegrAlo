@@ -7,19 +7,9 @@ import { EventsService } from '../events/events.service';
 import { MqttService } from '../mqtt/mqtt.service';
 import { ModuleRegistryService } from '../registry/module-registry.service';
 
-export type Approval = 'pending' | 'approved';
+import type { Approval, NodeInfo } from '@integralo/contract';
 
-export interface NodeInfo {
-  id: string;
-  module: string;
-  fw: string;
-  name: string | null;
-  approval: Approval;
-  online: boolean;
-  firstSeen: number;
-  lastSeen: number;
-  approvedAt: number | null;
-}
+export type { NodeInfo };
 
 interface NodeRow {
   id: string;

@@ -7,23 +7,40 @@ import { z } from 'zod';
 
 const KeySchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/, 'keys must be camelCase');
 
+/** Text in several languages, by language code: { "es": "Temperatura", "en": "Temperature" }. */
+export const LocalizedTextSchema = z.record(z.string().regex(/^[a-z]{2}$/), z.string().min(1));
+export type LocalizedText = z.infer<typeof LocalizedTextSchema>;
+
+/** Picks the text for a language, falling back to Spanish, then any language, then the fallback. */
+export function localize(text: LocalizedText | undefined, language: string, fallback: string): string {
+  if (!text) return fallback;
+  return text[language] ?? text.es ?? Object.values(text)[0] ?? fallback;
+}
+
+const variableCommon = {
+  key: KeySchema,
+  /** Name shown in the interfaces; the key is shown if missing. */
+  label: LocalizedTextSchema.optional(),
+  simulated: z.boolean().optional(),
+};
+
 export const VariableDefSchema = z.discriminatedUnion('type', [
   z.object({
-    key: KeySchema,
+    ...variableCommon,
     type: z.literal('number'),
     unit: z.string().optional(),
-    simulated: z.boolean().optional(),
+    /** Decimals shown in the interfaces. */
+    decimals: z.number().int().min(0).max(6).optional(),
   }),
   z.object({
-    key: KeySchema,
+    ...variableCommon,
     type: z.literal('enum'),
     values: z.array(z.string()).min(1),
-    simulated: z.boolean().optional(),
+    valueLabels: z.record(LocalizedTextSchema).optional(),
   }),
   z.object({
-    key: KeySchema,
+    ...variableCommon,
     type: z.literal('boolean'),
-    simulated: z.boolean().optional(),
   }),
 ]);
 export type VariableDef = z.infer<typeof VariableDefSchema>;

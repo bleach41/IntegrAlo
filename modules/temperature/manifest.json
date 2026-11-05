@@ -2,11 +2,28 @@
   "id": "temperature",
   "version": "0.1.0",
   "variables": [
-    { "key": "temperature", "type": "number", "unit": "°C" },
-    { "key": "setpoint", "type": "number", "unit": "°C" },
-    { "key": "output", "type": "number", "unit": "%" },
-    { "key": "mode", "type": "enum", "values": ["off", "manual", "auto"] },
-    { "key": "outdoorTemperature", "type": "number", "unit": "°C", "simulated": true }
+    { "key": "temperature", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Temperatura", "en": "Temperature" } },
+    { "key": "setpoint", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Consigna", "en": "Setpoint" } },
+    { "key": "output", "type": "number", "unit": "%", "decimals": 0, "label": { "es": "Climatizador", "en": "Air conditioner" } },
+    {
+      "key": "mode",
+      "type": "enum",
+      "values": ["off", "manual", "auto"],
+      "label": { "es": "Modo", "en": "Mode" },
+      "valueLabels": {
+        "off": { "es": "Apagado", "en": "Off" },
+        "manual": { "es": "Manual", "en": "Manual" },
+        "auto": { "es": "Automático", "en": "Automatic" }
+      }
+    },
+    {
+      "key": "outdoorTemperature",
+      "type": "number",
+      "unit": "°C",
+      "decimals": 1,
+      "simulated": true,
+      "label": { "es": "Exterior (simulada)", "en": "Outdoor (simulated)" }
+    }
   ],
   "commands": ["set_setpoint", "set_mode", "set_output", "set_params", "set_simulation"],
   "parameters": {

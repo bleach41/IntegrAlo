@@ -10,22 +10,9 @@ import { ModuleRegistryService } from '../registry/module-registry.service';
 export const COMM_LOSS = 'commLoss';
 const WATCHDOG_INTERVAL_MS = 5000;
 
-export type AlarmState = 'active' | 'acknowledged' | 'cleared' | 'closed';
+import type { AlarmRecord } from '@integralo/contract';
 
-export interface AlarmRecord {
-  id: number;
-  nodeId: string;
-  key: string;
-  /** active: not acknowledged; acknowledged: still active; cleared: back to normal but not acknowledged; closed: both. */
-  state: AlarmState;
-  raisedAt: number;
-  raisedValue: number | null;
-  detail: string | null;
-  ackedAt: number | null;
-  ackedBy: string | null;
-  clearedAt: number | null;
-  clearedValue: number | null;
-}
+export type { AlarmRecord };
 
 export interface AlarmConfig {
   key: string;
