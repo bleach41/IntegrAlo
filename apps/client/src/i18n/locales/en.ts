@@ -21,6 +21,15 @@ const en: typeof es = {
     off: 'Off',
     setpoint: 'setpoint {{value}}',
   },
+  visual: {
+    title: 'Synoptic',
+    alarm: 'alarm: {{name}}',
+    setpoint: 'SP',
+    high: 'HI',
+    low: 'LO',
+    room: 'Room',
+    consumption: 'Consumption',
+  },
   alarmsScreen: {
     title: 'Alarms',
     subtitle: 'Open alarms of every node',

@@ -7,7 +7,7 @@
  */
 export type ColorScheme = 'light' | 'dark';
 
-export const TOKENS = ['canvas', 'surface', 'line', 'ink', 'muted', 'accent', 'accent-strong', 'on-accent', 'danger', 'warning'] as const;
+export const TOKENS = ['canvas', 'surface', 'line', 'ink', 'muted', 'accent', 'accent-strong', 'on-accent', 'danger', 'warning', 'info'] as const;
 export type Token = (typeof TOKENS)[number];
 
 type Rgb = readonly [number, number, number];
@@ -24,6 +24,7 @@ export const palette: Record<ColorScheme, Record<Token, Rgb>> = {
     'on-accent': [4, 18, 12], // text over accent-strong
     danger: [248, 113, 113],
     warning: [251, 191, 36],
+    info: [96, 165, 250], // process state in synoptics: cold air, water (blue 400)
   },
   light: {
     canvas: [244, 248, 246],
@@ -36,6 +37,7 @@ export const palette: Record<ColorScheme, Record<Token, Rgb>> = {
     'on-accent': [255, 255, 255],
     danger: [220, 38, 38],
     warning: [217, 119, 6],
+    info: [37, 99, 235], // blue 600
   },
 };
 

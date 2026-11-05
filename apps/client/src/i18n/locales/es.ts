@@ -19,6 +19,15 @@ const es = {
     off: 'Apagado',
     setpoint: 'consigna {{value}}',
   },
+  visual: {
+    title: 'Sinóptico',
+    alarm: 'alarma: {{name}}',
+    setpoint: 'SP',
+    high: 'HI',
+    low: 'LO',
+    room: 'Habitación',
+    consumption: 'Consumo',
+  },
   alarmsScreen: {
     title: 'Alarmas',
     subtitle: 'Alarmas abiertas de todos los nodos',

@@ -115,6 +115,25 @@ export function useAcknowledgeAlarm() {
   });
 }
 
+/** Per-node alarm thresholds (high/low lines of the synoptic bars). */
+export interface AlarmConfig {
+  key: string;
+  variable: string;
+  type: 'high' | 'low';
+  threshold: number;
+  deadband: number;
+  delayS: number;
+  enabled: boolean;
+}
+
+export function useAlarmConfigs(nodeId: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ['alarm-configs', nodeId],
+    queryFn: () => api<AlarmConfig[]>('GET', `/nodes/${nodeId}/alarm-configs`),
+  });
+}
+
 export function useApproveNode() {
   const api = useApi();
   const queryClient = useQueryClient();

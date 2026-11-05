@@ -13,7 +13,17 @@ import { GenericSummary } from '@/features/nodes/GenericSummary';
 import { NodeHeader } from '@/features/nodes/NodeCard';
 import { VariablesGrid } from '@/features/nodes/VariablesGrid';
 import { NodeTrends } from '@/features/telemetry/NodeTrends';
+import { NodeSynoptic } from '@/features/visual/NodeSynoptic';
 import { moduleViews } from '@/modules/registry';
+import type { ModuleManifest } from '@integralo/contract';
+
+/** A synoptic exists if the module has its own, or its summary variable declares a display range. */
+function hasSynoptic(manifest: ModuleManifest): boolean {
+  if (moduleViews[manifest.id]?.Synoptic) return true;
+  const key = manifest.summary?.primary ?? manifest.variables[0].key;
+  const variable = manifest.variables.find((v) => v.key === key);
+  return variable?.type === 'number' && !!variable.displayRange;
+}
 
 /**
  * Detail of a node, entirely generated from its module manifest (plus the optional module
@@ -57,7 +67,11 @@ export default function NodeDetailScreen() {
             {latest && manifest ? (
               <>
                 <View className="my-4">
-                  <Summary manifest={manifest} sample={latest} />
+                  {hasSynoptic(manifest) ? (
+                    <NodeSynoptic node={node} manifest={manifest} sample={latest} />
+                  ) : (
+                    <Summary manifest={manifest} sample={latest} />
+                  )}
                 </View>
                 <VariablesGrid
                   variables={manifest.variables}
