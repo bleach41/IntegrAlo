@@ -25,7 +25,70 @@
       "label": { "es": "Exterior (simulada)", "en": "Outdoor (simulated)" }
     }
   ],
-  "commands": ["set_setpoint", "set_mode", "set_output", "set_params", "set_simulation"],
+  "commands": [
+    {
+      "type": "set_setpoint",
+      "label": { "es": "Consigna", "en": "Setpoint" },
+      "fields": { "setpoint": { "type": "number", "unit": "°C", "min": 16, "max": 30, "step": 0.5 } }
+    },
+    {
+      "type": "set_mode",
+      "label": { "es": "Modo", "en": "Mode" },
+      "fields": {
+        "mode": {
+          "type": "enum",
+          "values": ["off", "manual", "auto"],
+          "valueLabels": {
+            "off": { "es": "Apagado", "en": "Off" },
+            "manual": { "es": "Manual", "en": "Manual" },
+            "auto": { "es": "Automático", "en": "Automatic" }
+          }
+        }
+      }
+    },
+    {
+      "type": "set_output",
+      "label": { "es": "Salida manual", "en": "Manual output" },
+      "fields": { "output": { "type": "number", "unit": "%", "min": 0, "max": 100, "step": 10 } }
+    },
+    {
+      "type": "set_params",
+      "label": { "es": "Parámetros de control", "en": "Control parameters" },
+      "partial": true,
+      "fields": {
+        "algorithm": {
+          "type": "enum",
+          "label": { "es": "Algoritmo", "en": "Algorithm" },
+          "values": ["onoff", "pi"],
+          "valueLabels": { "onoff": { "es": "Todo/nada", "en": "On/off" }, "pi": { "es": "PI", "en": "PI" } }
+        },
+        "hysteresis": { "type": "number", "label": { "es": "Histéresis", "en": "Hysteresis" }, "unit": "°C", "min": 0.1, "max": 5, "step": 0.1 },
+        "minOnTimeS": { "type": "number", "label": { "es": "Encendido mínimo", "en": "Minimum on time" }, "unit": "s", "min": 0, "max": 1800, "step": 30 },
+        "minOffTimeS": { "type": "number", "label": { "es": "Apagado mínimo", "en": "Minimum off time" }, "unit": "s", "min": 0, "max": 1800, "step": 30 },
+        "kp": { "type": "number", "label": { "es": "Kp", "en": "Kp" }, "unit": "%/°C", "min": 0, "step": 1 },
+        "ki": { "type": "number", "label": { "es": "Ki", "en": "Ki" }, "unit": "%/(°C·s)", "min": 0, "step": 0.005 }
+      }
+    },
+    {
+      "type": "set_simulation",
+      "label": { "es": "Simulación (banco de pruebas)", "en": "Simulation (test bench)" },
+      "partial": true,
+      "fields": {
+        "disturbance": {
+          "type": "enum",
+          "label": { "es": "Perturbación exterior", "en": "Outdoor disturbance" },
+          "values": ["off", "step", "daily"],
+          "valueLabels": {
+            "off": { "es": "Desactivada", "en": "Off" },
+            "step": { "es": "Escalón", "en": "Step" },
+            "daily": { "es": "Perfil diario", "en": "Daily profile" }
+          }
+        },
+        "outdoorBaseC": { "type": "number", "label": { "es": "Exterior base", "en": "Outdoor base" }, "unit": "°C", "min": -10, "max": 50, "step": 1 },
+        "amplitudeC": { "type": "number", "label": { "es": "Amplitud", "en": "Amplitude" }, "unit": "°C", "min": 0, "max": 20, "step": 1 }
+      }
+    }
+  ],
   "parameters": {
     "setpointMin": { "type": "number", "unit": "°C", "default": 16 },
     "setpointMax": { "type": "number", "unit": "°C", "default": 30 },
@@ -38,8 +101,22 @@
     "samplePeriodMs": { "type": "number", "unit": "ms", "min": 500, "max": 60000, "default": 2000 }
   },
   "alarms": [
-    { "key": "highTemp", "variable": "temperature", "type": "high", "defaultThreshold": 28, "defaultDeadband": 0.5 },
-    { "key": "lowTemp", "variable": "temperature", "type": "low", "defaultThreshold": 18, "defaultDeadband": 0.5 }
+    {
+      "key": "highTemp",
+      "label": { "es": "Temperatura alta", "en": "High temperature" },
+      "variable": "temperature",
+      "type": "high",
+      "defaultThreshold": 28,
+      "defaultDeadband": 0.5
+    },
+    {
+      "key": "lowTemp",
+      "label": { "es": "Temperatura baja", "en": "Low temperature" },
+      "variable": "temperature",
+      "type": "low",
+      "defaultThreshold": 18,
+      "defaultDeadband": 0.5
+    }
   ],
   "views": ["summary", "trend", "engineering"]
 }

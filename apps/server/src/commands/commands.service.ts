@@ -76,7 +76,7 @@ export class CommandsService implements OnModuleInit, OnModuleDestroy {
     if (node.approval !== 'approved') throw new ConflictException(`node ${nodeId} is not approved`);
     if (!node.online) throw new ConflictException(`node ${nodeId} is offline`);
     const manifest = this.registry.get(node.module);
-    if (!manifest?.commands.includes(type)) {
+    if (!manifest?.commands.some((c) => c.type === type)) {
       throw new BadRequestException(`module ${node.module} has no command "${type}"`);
     }
 
