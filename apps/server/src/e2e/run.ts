@@ -145,6 +145,13 @@ async function main(): Promise<void> {
     const consecutive = samples.every((s, i) => i === 0 || s.seq === samples[i - 1].seq + 1);
     check('telemetry stored after approval', samples.length >= 2 && consecutive, `${samples.length} samples`);
     check('stored telemetry has temperature', typeof samples[0]?.values.temperature === 'number');
+    const csvRes = await fetch(`${API}/nodes/${SIM_ID}/telemetry/export.csv`, { headers: { authorization: `Bearer ${token}` } });
+    const csvLines = (await csvRes.text()).trim().split('\r\n');
+    check('telemetry exported as CSV with manifest columns',
+      csvRes.headers.get('content-type')?.startsWith('text/csv') === true &&
+        csvLines[0] === 'time_iso,time_ms,seq,temperature,setpoint,output,mode,outdoorTemperature' &&
+        csvLines.length >= samples.length + 1,
+      `${csvLines.length - 1} rows`);
 
     // P3: confirmed and rejected commands
     const sent = await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } });
