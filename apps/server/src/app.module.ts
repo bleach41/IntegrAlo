@@ -1,4 +1,6 @@
 import { Controller, Get, Global, Module } from '@nestjs/common';
+import { Public } from './auth/auth.decorators';
+import { AuthModule } from './auth/auth.module';
 import { CommandsModule } from './commands/commands.module';
 import { APP_CONFIG, loadConfig } from './config';
 import { DatabaseModule } from './database/database.module';
@@ -20,6 +22,7 @@ class ConfigModule {}
 class HealthController {
   constructor(private readonly mqtt: MqttService) {}
 
+  @Public()
   @Get()
   health() {
     return { status: 'ok', broker: this.mqtt.connected ? 'connected' : 'disconnected' };
@@ -31,6 +34,7 @@ class HealthController {
     ConfigModule,
     DatabaseModule,
     EventsModule,
+    AuthModule,
     RegistryModule,
     MqttModule,
     NodesModule,

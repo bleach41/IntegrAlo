@@ -10,7 +10,14 @@ export type EventKind =
   | 'command.confirmed'
   | 'command.rejected'
   | 'command.unconfirmed'
-  | 'command.late_ack';
+  | 'command.late_ack'
+  | 'setup.completed'
+  | 'user.login'
+  | 'user.login_failed'
+  | 'user.logout'
+  | 'user.created'
+  | 'user.updated'
+  | 'role.updated';
 
 export interface AuditEvent {
   id: number;
@@ -21,7 +28,7 @@ export interface AuditEvent {
   detail: unknown;
 }
 
-/** Audit log (requirement RF-06): who did what, when. Until users exist, actor is "system" or "api". */
+/** Audit log (requirement RF-06): who did what, when. The actor is a username or "system". */
 @Injectable()
 export class EventsService {
   constructor(private readonly database: DatabaseService) {}

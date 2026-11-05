@@ -48,4 +48,43 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX events_time ON events (at);
   `,
+  `
+  CREATE TABLE roles (
+    id    TEXT PRIMARY KEY,
+    name  TEXT NOT NULL
+  );
+
+  CREATE TABLE role_permissions (
+    role_id     TEXT NOT NULL REFERENCES roles (id),
+    permission  TEXT NOT NULL,
+    PRIMARY KEY (role_id, permission)
+  );
+
+  CREATE TABLE users (
+    id             INTEGER PRIMARY KEY,
+    username       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash  TEXT NOT NULL,
+    role_id        TEXT NOT NULL REFERENCES roles (id),
+    disabled       INTEGER NOT NULL DEFAULT 0,
+    created_at     INTEGER NOT NULL
+  );
+
+  CREATE TABLE sessions (
+    token_hash  TEXT PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users (id),
+    created_at  INTEGER NOT NULL,
+    expires_at  INTEGER NOT NULL
+  );
+
+  -- Initial profiles (RF-08). Permissions are data: they can be changed through the API.
+  INSERT INTO roles (id, name) VALUES ('user', 'Usuario'), ('engineer', 'Ingeniería');
+  INSERT INTO role_permissions (role_id, permission) VALUES
+    ('user', 'nodes.read'),
+    ('user', 'telemetry.read'),
+    ('user', 'commands.read'),
+    ('user', 'modules.read'),
+    ('user', 'command:*:set_setpoint'),
+    ('user', 'command:*:set_mode'),
+    ('engineer', '*');
+  `,
 ];

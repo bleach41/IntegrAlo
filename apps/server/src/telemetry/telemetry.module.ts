@@ -1,5 +1,7 @@
 import { Controller, Get, Module, NotFoundException, Param, Query } from '@nestjs/common';
 import { z } from 'zod';
+import { RequirePermission } from '../auth/auth.decorators';
+import { PERMISSIONS } from '../auth/permissions';
 import { parseBody } from '../common/json';
 import { NodesModule } from '../nodes/nodes.module';
 import { NodesService } from '../nodes/nodes.service';
@@ -19,6 +21,7 @@ class TelemetryController {
   ) {}
 
   /** Samples between from and to (Unix ms); by default, the last hour. */
+  @RequirePermission(PERMISSIONS.telemetryRead)
   @Get()
   query(@Param('id') id: string, @Query() query: unknown) {
     this.nodes.get(id);
@@ -27,6 +30,7 @@ class TelemetryController {
     return this.telemetry.query(id, from ?? end - 3_600_000, end, limit);
   }
 
+  @RequirePermission(PERMISSIONS.telemetryRead)
   @Get('latest')
   latest(@Param('id') id: string) {
     this.nodes.get(id);

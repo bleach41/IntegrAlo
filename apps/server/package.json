@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node --disable-warning=ExperimentalWarning dist/main.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"dist/**/*.test.js\"",
     "e2e": "node dist/e2e/run.js"
   },
   "dependencies": {

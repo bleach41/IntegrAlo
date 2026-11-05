@@ -26,10 +26,16 @@ function check(name: string, ok: boolean, detail = ''): void {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function http(method: string, path: string, body?: unknown): Promise<{ status: number; data: any }> {
+/** Session token used by http(); changed when the test signs in as another user. */
+let token: string | undefined;
+
+async function http(method: string, path: string, body?: unknown, as = token): Promise<{ status: number; data: any }> {
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers['content-type'] = 'application/json';
+  if (as) headers.authorization = `Bearer ${as}`;
   const res = await fetch(`${API}${path}`, {
     method,
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
@@ -94,6 +100,23 @@ async function main(): Promise<void> {
       return data.broker === 'connected' ? data : null;
     }, 30000);
     check('core started and connected to the broker', !!health);
+
+    // RF-08: first-run setup, sign-in and permissions
+    check('API refuses requests without a session', (await http('GET', '/nodes')).status === 401);
+    check('fresh installation needs setup', (await http('GET', '/setup')).data.needsSetup === true);
+    const admin = await http('POST', '/setup', { username: 'admin', password: 'admin-e2e-pass' });
+    check('setup creates the first engineering account', admin.status === 201 && admin.data.roleId === 'engineer');
+    check('setup cannot run twice', (await http('POST', '/setup', { username: 'other', password: 'other-e2e-pass' })).status === 409);
+    check('wrong password refused', (await http('POST', '/auth/login', { username: 'admin', password: 'wrong-password' })).status === 401);
+    const login = await http('POST', '/auth/login', { username: 'admin', password: 'admin-e2e-pass' });
+    check('engineer signs in', login.status === 200 && typeof login.data.token === 'string');
+    token = login.data.token;
+    const created = await http('POST', '/users', { username: 'tony', password: 'tony-e2e-pass', roleId: 'user' });
+    check('engineer creates a user account', created.status === 201);
+    check('passwords shorter than 8 characters refused',
+      (await http('POST', '/users', { username: 'weak', password: 'short', roleId: 'user' })).status === 400);
+    const userToken = (await http('POST', '/auth/login', { username: 'tony', password: 'tony-e2e-pass' })).data.token as string;
+
     const modules = await http('GET', '/modules');
     check('temperature module loaded from its manifest', modules.data.some((m: any) => m.id === 'temperature'));
 
@@ -112,6 +135,7 @@ async function main(): Promise<void> {
     const blocked = await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } });
     check('commands to a pending node are refused', blocked.status === 409);
 
+    check('user profile cannot approve nodes', (await http('POST', `/nodes/${SIM_ID}/approve`, {}, userToken)).status === 403);
     const approved = await http('POST', `/nodes/${SIM_ID}/approve`, { name: 'Habitación 1' });
     check('node approved with a name', approved.status === 201 && approved.data.approval === 'approved' && approved.data.name === 'Habitación 1');
 
@@ -133,6 +157,14 @@ async function main(): Promise<void> {
     check('out-of-range command rejected with its reason', rejected?.status === 'rejected' && rejected.reason === 'out_of_range');
     const unknown = await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'reboot', payload: {} });
     check('command not declared by the module refused (400)', unknown.status === 400);
+
+    const userSetpoint = await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_setpoint', payload: { setpoint: 25 } }, userToken);
+    check('user profile can change the setpoint', userSetpoint.status === 201 && (await commandOutcome(userSetpoint.data.id, 3000))?.status === 'confirmed');
+    check('user profile cannot change control parameters',
+      (await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_params', payload: { hysteresis: 1 } }, userToken)).status === 403);
+    check('user profile cannot read the audit log', (await http('GET', '/events', undefined, userToken)).status === 403);
+    await http('POST', '/auth/logout', undefined, userToken);
+    check('session invalid after logout', (await http('GET', '/nodes', undefined, userToken)).status === 401);
 
     // P3: unconfirmed — a node that is online but never answers
     await probe.publishAsync(nodeTopic(MUTE_ID, 'announce'), JSON.stringify({ nodeId: MUTE_ID, module: 'temperature', fw: 'mute', uptimeMs: 0 }), { qos: 1, retain: true });
@@ -162,8 +194,12 @@ async function main(): Promise<void> {
     const expected = ['node.discovered', 'node.approved', 'node.online', 'node.offline', 'command.sent', 'command.confirmed', 'command.rejected'];
     const missing = expected.filter((k) => !kinds.has(k));
     check('audit log records the whole sequence', missing.length === 0, missing.length ? `missing ${missing.join(', ')}` : `${kinds.size} kinds`);
-    const discovered = ((await http('GET', `/events?nodeId=${SIM_ID}`)).data as any[]).filter((e) => e.kind === 'node.discovered');
-    check('reconnection does not register the node again', discovered.length === 1);
+    const nodeEvents = (await http('GET', `/events?nodeId=${SIM_ID}`)).data as any[];
+    check('reconnection does not register the node again', nodeEvents.filter((e) => e.kind === 'node.discovered').length === 1);
+    const actors = new Set(nodeEvents.filter((e) => e.kind === 'command.sent' || e.kind === 'node.approved').map((e) => e.actor));
+    check('audit log names the user behind each action', actors.has('admin') && actors.has('tony'), [...actors].join(', '));
+    const all = JSON.stringify((await http('GET', '/events?limit=1000')).data);
+    check('audit log never contains passwords', !all.includes('tony-e2e-pass') && !all.includes('admin-e2e-pass'));
   } finally {
     sim?.kill('SIGKILL');
     server.kill('SIGKILL');
