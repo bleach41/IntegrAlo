@@ -102,11 +102,20 @@ export const AlarmDefSchema = z.object({
 });
 export type AlarmDef = z.infer<typeof AlarmDefSchema>;
 
+/** What a compact card shows: one variable in large type and a few others below it. */
+export const SummaryDefSchema = z.object({
+  primary: KeySchema,
+  secondary: z.array(KeySchema).max(3).default([]),
+});
+export type SummaryDef = z.infer<typeof SummaryDefSchema>;
+
 export const ModuleManifestSchema = z
   .object({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, 'version must be semver (x.y.z)'),
+    label: LocalizedTextSchema.optional(),
     variables: z.array(VariableDefSchema).min(1),
+    summary: SummaryDefSchema.optional(),
     commands: z.array(CommandDefSchema).min(1),
     parameters: z.record(ParameterDefSchema),
     alarms: z.array(AlarmDefSchema),
@@ -117,6 +126,11 @@ export const ModuleManifestSchema = z
     const duplicated = keys.filter((k, i) => keys.indexOf(k) !== i);
     for (const key of new Set(duplicated)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: `duplicated variable "${key}"` });
+    }
+    for (const key of manifest.summary ? [manifest.summary.primary, ...manifest.summary.secondary] : []) {
+      if (!keys.includes(key)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `summary refers to unknown variable "${key}"` });
+      }
     }
     const types = manifest.commands.map((c) => c.type);
     for (const type of new Set(types.filter((t, i) => types.indexOf(t) !== i))) {

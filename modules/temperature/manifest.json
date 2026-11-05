@@ -1,6 +1,8 @@
 {
   "id": "temperature",
   "version": "0.1.0",
+  "label": { "es": "Temperatura", "en": "Temperature" },
+  "summary": { "primary": "temperature", "secondary": ["setpoint", "mode"] },
   "variables": [
     { "key": "temperature", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Temperatura", "en": "Temperature" } },
     { "key": "setpoint", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Consigna", "en": "Setpoint" } },
