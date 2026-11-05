@@ -7,6 +7,10 @@ const token = (name) => `rgb(var(--color-${name}) / <alpha-value>)`;
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // The theme is applied through CSS variables (ThemeProvider), not `dark:` variants.
+  // 'class' stops NativeWind from reacting to the page's color scheme on its own, which
+  // throws "Cannot manually set color scheme" on the web in development.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
