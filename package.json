@@ -7,6 +7,9 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
-    "check:manifests": "node packages/contract/dist/cli/check-manifests.js modules"
+    "check:manifests": "node packages/contract/dist/cli/check-manifests.js modules",
+    "sim-node": "pnpm --filter @integralo/sim-node start",
+    "simulate": "pnpm --filter @integralo/sim-node simulate",
+    "e2e": "pnpm --filter @integralo/sim-node e2e"
   }
 }
