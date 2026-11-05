@@ -1,9 +1,10 @@
 import { CommandDef, CommandFieldDef, TelemetryValue, localize } from '@integralo/contract';
+import { Send } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useSendCommand } from '@/api/queries';
-import { Button, Segmented } from '@/components/ui';
+import { Segmented, SmallButton } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 import { CommandStatus } from './CommandStatus';
 
@@ -80,8 +81,7 @@ function SingleField({ name, field, current, disabled, busy, onSubmit }: FieldPr
       </Text>
       <StepButton label="+" onPress={() => setEdited(clamp(round(shown + step, decimals)))} />
       <View className="ml-auto">
-        <Button
-          label={t('commands.send')}
+        <SendButton
           busy={busy}
           onPress={() => {
             if (disabled) return;
@@ -137,10 +137,18 @@ function MultiFieldForm({ fields, disabled, busy, onSubmit }: FieldProps & { fie
           )}
         </View>
       ))}
-      {empty ? <Text className="mb-1 text-xs text-warning">{t('commands.nothingToSend')}</Text> : null}
-      <Button label={t('commands.send')} busy={busy} onPress={submit} />
+      <View className="flex-row items-center justify-end">
+        {empty ? <Text className="mr-3 flex-1 text-xs text-warning">{t('commands.nothingToSend')}</Text> : null}
+        <SendButton busy={busy} onPress={submit} />
+      </View>
     </View>
   );
+}
+
+function SendButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  return <SmallButton label={t('commands.send')} busy={busy} onPress={onPress} icon={<Send size={14} color={colors.accent} />} />;
 }
 
 function StepButton({ label, onPress }: { label: string; onPress: () => void }) {

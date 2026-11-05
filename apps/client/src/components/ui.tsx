@@ -124,6 +124,32 @@ export function Button({
   );
 }
 
+/** Compact, low-emphasis action for dense panels (e.g. sending a command). */
+export function SmallButton({
+  label,
+  onPress,
+  busy = false,
+  icon,
+}: {
+  label: string;
+  onPress: () => void;
+  busy?: boolean;
+  icon?: ReactNode;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={busy}
+      accessibilityRole="button"
+      className={`h-9 flex-row items-center justify-center self-start rounded-full bg-accent/15 px-3.5 active:bg-accent/25 ${busy ? 'opacity-60' : ''}`}
+    >
+      {busy ? <ActivityIndicator size="small" color={colors.accent} /> : icon}
+      <Text className="ml-1.5 text-sm font-semibold text-accent">{label}</Text>
+    </Pressable>
+  );
+}
+
 export function ErrorText({ message }: { message: Message | null }) {
   const { t } = useTranslation();
   if (!message) return null;
