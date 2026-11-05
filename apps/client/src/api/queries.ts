@@ -1,4 +1,4 @@
-import type { AlarmRecord, ModuleManifest, NodeInfo, TelemetrySample } from '@integralo/contract';
+import type { AlarmRecord, CommandRecord, ModuleManifest, NodeInfo, TelemetrySample } from '@integralo/contract';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useSession } from '@/features/auth/session.store';
@@ -9,8 +9,13 @@ export const queryKeys = {
   nodes: ['nodes'] as const,
   modules: ['modules'] as const,
   latest: (nodeId: string) => ['telemetry', 'latest', nodeId] as const,
+  history: (nodeId: string) => ['telemetry', 'history', nodeId] as const,
+  command: (commandId: string) => ['command', commandId] as const,
   openAlarms: ['alarms', 'open'] as const,
 };
+
+/** Time window of the trend chart. */
+export const HISTORY_WINDOW_MS = 3_600_000;
 
 /** Authenticated request bound to the current session; a 401 ends the session. */
 export function useApi() {
@@ -67,6 +72,47 @@ export function useLatestTelemetry(nodeId: string, enabled: boolean) {
 export function useOpenAlarms() {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.openAlarms, queryFn: () => api<AlarmRecord[]>('GET', '/alarms') });
+}
+
+/** Last hour of readings; the WebSocket appends new samples to the same cache entry. */
+export function useHistory(nodeId: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.history(nodeId),
+    queryFn: () => api<TelemetrySample[]>('GET', `/nodes/${nodeId}/telemetry?from=${Date.now() - HISTORY_WINDOW_MS}&limit=5000`),
+  });
+}
+
+export function useSendCommand(nodeId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (command: { type: string; payload: Record<string, unknown> }) =>
+      api<CommandRecord>('POST', `/nodes/${nodeId}/commands`, command),
+    // The ack may arrive through the WebSocket before this response: keep the newer state.
+    onSuccess: (record) =>
+      queryClient.setQueryData<CommandRecord>(queryKeys.command(record.id), (current) => current ?? record),
+  });
+}
+
+/** State of a sent command, updated live (sent → confirmed / rejected / unconfirmed). */
+export function useCommand(commandId: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.command(commandId ?? ''),
+    enabled: !!commandId,
+    queryFn: () => api<CommandRecord>('GET', `/commands/${commandId}`),
+    staleTime: Infinity,
+  });
+}
+
+export function useAcknowledgeAlarm() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (alarmId: number) => api<AlarmRecord>('POST', `/alarms/${alarmId}/ack`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.openAlarms }),
+  });
 }
 
 export function useApproveNode() {

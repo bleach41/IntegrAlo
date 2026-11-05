@@ -1,9 +1,9 @@
-import type { AlarmRecord, NodeInfo, RealtimeEvent } from '@integralo/contract';
+import type { AlarmRecord, NodeInfo, RealtimeEvent, TelemetrySample } from '@integralo/contract';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useSession } from '@/features/auth/session.store';
-import { queryKeys } from './queries';
+import { HISTORY_WINDOW_MS, queryKeys } from './queries';
 
 export type RealtimeStatus = 'connecting' | 'live' | 'offline';
 
@@ -45,9 +45,17 @@ export function useRealtime(): void {
         case 'node':
           queryClient.setQueryData<NodeInfo[]>(queryKeys.nodes, (nodes) => upsert(nodes, message.data, (n) => n.id));
           break;
-        case 'telemetry':
-          queryClient.setQueryData(queryKeys.latest(message.data.nodeId), message.data.sample);
+        case 'telemetry': {
+          const { nodeId, sample } = message.data;
+          queryClient.setQueryData(queryKeys.latest(nodeId), sample);
+          // Extend the trend only if it is loaded, dropping samples older than the window.
+          queryClient.setQueryData<TelemetrySample[]>(queryKeys.history(nodeId), (history) => {
+            if (!history) return history;
+            const from = sample.receivedAt - HISTORY_WINDOW_MS;
+            return [...history.filter((s) => s.receivedAt >= from), sample];
+          });
           break;
+        }
         case 'alarm':
           queryClient.setQueryData<AlarmRecord[]>(queryKeys.openAlarms, (alarms) =>
             message.data.state === 'closed'
@@ -56,7 +64,7 @@ export function useRealtime(): void {
           );
           break;
         case 'command':
-          queryClient.setQueryData(['command', message.data.id], message.data);
+          queryClient.setQueryData(queryKeys.command(message.data.id), message.data);
           break;
       }
     };
