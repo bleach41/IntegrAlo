@@ -4,7 +4,14 @@
   "label": { "es": "Nivel de tanque", "en": "Tank level" },
   "summary": { "primary": "level", "secondary": ["pump", "mode"] },
   "variables": [
-    { "key": "level", "type": "number", "unit": "%", "decimals": 0, "label": { "es": "Nivel", "en": "Level" } },
+    {
+      "key": "level",
+      "type": "number",
+      "unit": "%",
+      "decimals": 0,
+      "displayRange": { "min": 0, "max": 100 },
+      "label": { "es": "Nivel", "en": "Level" }
+    },
     {
       "key": "pump",
       "type": "enum",

@@ -31,6 +31,8 @@ export const VariableDefSchema = z.discriminatedUnion('type', [
     unit: z.string().optional(),
     /** Decimals shown in the interfaces. */
     decimals: z.number().int().min(0).max(6).optional(),
+    /** Scale of gauges and synoptic bars (not a validation limit). */
+    displayRange: z.object({ min: z.number(), max: z.number() }).optional(),
   }),
   z.object({
     ...variableCommon,

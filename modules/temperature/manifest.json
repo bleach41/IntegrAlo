@@ -4,7 +4,14 @@
   "label": { "es": "Temperatura", "en": "Temperature" },
   "summary": { "primary": "temperature", "secondary": ["setpoint", "mode"] },
   "variables": [
-    { "key": "temperature", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Temperatura", "en": "Temperature" } },
+    {
+      "key": "temperature",
+      "type": "number",
+      "unit": "°C",
+      "decimals": 1,
+      "displayRange": { "min": 16, "max": 32 },
+      "label": { "es": "Temperatura", "en": "Temperature" }
+    },
     { "key": "setpoint", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Consigna", "en": "Setpoint" } },
     { "key": "output", "type": "number", "unit": "%", "decimals": 0, "label": { "es": "Climatizador", "en": "Air conditioner" } },
     {
