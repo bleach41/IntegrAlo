@@ -1,19 +1,20 @@
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 import { Brand, Button, Card, ErrorText, Field, Screen, Title } from '@/components/ui';
-import { loginError } from '@/features/auth/errors';
+import { Message, loginError } from '@/features/auth/errors';
 import { useSession } from '@/features/auth/session.store';
-import { t } from '@/i18n/es';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const serverUrl = useSession((s) => s.serverUrl);
   const needsSetup = useSession((s) => s.needsSetup);
   const login = useSession((s) => s.login);
   const forgetServer = useSession((s) => s.forgetServer);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!serverUrl) return <Redirect href="/connect" />;
@@ -55,7 +56,7 @@ export default function LoginScreen() {
         />
         <Button label={t('login.submit')} onPress={submit} busy={busy} />
       </Card>
-      <Text className="mt-6 text-center text-xs text-muted">{t('home.server', { url: serverUrl })}</Text>
+      <Text className="mt-6 text-center text-xs text-muted">{t('connect.current', { url: serverUrl })}</Text>
       <Button label={t('connect.change')} onPress={changeServer} variant="ghost" />
     </Screen>
   );

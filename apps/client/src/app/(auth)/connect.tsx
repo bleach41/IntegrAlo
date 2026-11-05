@@ -1,16 +1,17 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { Brand, Button, Card, ErrorText, Field, Screen, Title } from '@/components/ui';
-import { connectionError } from '@/features/auth/errors';
+import { Message, connectionError } from '@/features/auth/errors';
 import { useSession } from '@/features/auth/session.store';
-import { t } from '@/i18n/es';
 
 export default function ConnectScreen() {
+  const { t } = useTranslation();
   const connect = useSession((s) => s.connect);
   // On the web the client is usually opened on the server itself.
   const [address, setAddress] = useState(Platform.OS === 'web' ? 'localhost' : '');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit() {

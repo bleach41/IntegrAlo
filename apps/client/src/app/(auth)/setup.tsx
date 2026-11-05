@@ -1,19 +1,20 @@
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Brand, Button, Card, ErrorText, Field, Screen, Title } from '@/components/ui';
-import { setupError, validateNewAccount } from '@/features/auth/errors';
+import { Message, setupError, validateNewAccount } from '@/features/auth/errors';
 import { useSession } from '@/features/auth/session.store';
-import { t } from '@/i18n/es';
 
 /** First-run assistant: only reachable while the server has no users. */
 export default function SetupScreen() {
+  const { t } = useTranslation();
   const serverUrl = useSession((s) => s.serverUrl);
   const needsSetup = useSession((s) => s.needsSetup);
   const setup = useSession((s) => s.setup);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!serverUrl) return <Redirect href="/connect" />;
