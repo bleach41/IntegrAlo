@@ -21,8 +21,8 @@
     "samplePeriodMs": { "type": "number", "unit": "ms", "min": 500, "max": 60000, "default": 2000 }
   },
   "alarms": [
-    { "key": "highTemp", "variable": "temperature", "type": "high" },
-    { "key": "lowTemp", "variable": "temperature", "type": "low" }
+    { "key": "highTemp", "variable": "temperature", "type": "high", "defaultThreshold": 28, "defaultDeadband": 0.5 },
+    { "key": "lowTemp", "variable": "temperature", "type": "low", "defaultThreshold": 18, "defaultDeadband": 0.5 }
   ],
   "views": ["summary", "trend", "engineering"]
 }

@@ -1,6 +1,8 @@
 import { Controller, Get, Global, Module } from '@nestjs/common';
+import { AlarmsModule } from './alarms/alarms.module';
 import { Public } from './auth/auth.decorators';
 import { AuthModule } from './auth/auth.module';
+import { BusModule } from './bus/event-bus';
 import { CommandsModule } from './commands/commands.module';
 import { APP_CONFIG, loadConfig } from './config';
 import { DatabaseModule } from './database/database.module';
@@ -8,6 +10,7 @@ import { EventsModule } from './events/events.module';
 import { MqttModule } from './mqtt/mqtt.module';
 import { MqttService } from './mqtt/mqtt.service';
 import { NodesModule } from './nodes/nodes.module';
+import { RealtimeGateway } from './realtime/realtime.gateway';
 import { RegistryModule } from './registry/registry.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 
@@ -32,6 +35,7 @@ class HealthController {
 @Module({
   imports: [
     ConfigModule,
+    BusModule,
     DatabaseModule,
     EventsModule,
     AuthModule,
@@ -40,7 +44,9 @@ class HealthController {
     NodesModule,
     TelemetryModule,
     CommandsModule,
+    AlarmsModule,
   ],
   controllers: [HealthController],
+  providers: [RealtimeGateway],
 })
 export class AppModule {}

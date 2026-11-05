@@ -87,4 +87,34 @@ export const MIGRATIONS: string[] = [
     ('user', 'command:*:set_mode'),
     ('engineer', '*');
   `,
+  `
+  -- Per-node thresholds of the alarms declared by each module (RF-05).
+  CREATE TABLE alarm_configs (
+    node_id    TEXT NOT NULL REFERENCES nodes (id),
+    alarm_key  TEXT NOT NULL,
+    variable   TEXT NOT NULL,
+    type       TEXT NOT NULL CHECK (type IN ('high', 'low')),
+    threshold  REAL NOT NULL,
+    deadband   REAL NOT NULL DEFAULT 0,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (node_id, alarm_key)
+  );
+
+  -- One row per occurrence: raised, acknowledged and cleared (normalized) independently.
+  CREATE TABLE alarms (
+    id             INTEGER PRIMARY KEY,
+    node_id        TEXT NOT NULL REFERENCES nodes (id),
+    alarm_key      TEXT NOT NULL,
+    raised_at      INTEGER NOT NULL,
+    raised_value   REAL,
+    detail         TEXT,
+    acked_at       INTEGER,
+    acked_by       TEXT,
+    cleared_at     INTEGER,
+    cleared_value  REAL
+  );
+  CREATE INDEX alarms_node_key ON alarms (node_id, alarm_key, cleared_at);
+
+  INSERT INTO role_permissions (role_id, permission) VALUES ('user', 'alarms.read'), ('user', 'alarms.ack');
+  `,
 ];

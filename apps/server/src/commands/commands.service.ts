@@ -11,6 +11,7 @@ import {
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { EventBus } from '../bus/event-bus';
 import { parseJson } from '../common/json';
 import { APP_CONFIG, AppConfig } from '../config';
 import { DatabaseService } from '../database/database.service';
@@ -61,6 +62,7 @@ export class CommandsService implements OnModuleInit, OnModuleDestroy {
     private readonly nodes: NodesService,
     private readonly registry: ModuleRegistryService,
     private readonly mqtt: MqttService,
+    private readonly bus: EventBus,
   ) {
     mqtt.on('ack', (nodeId, payload) => this.onAck(nodeId, payload));
   }
@@ -102,7 +104,9 @@ export class CommandsService implements OnModuleInit, OnModuleDestroy {
       id,
       setTimeout(() => this.onTimeout(id), this.config.ackTimeoutMs),
     );
-    return this.get(id);
+    const record = this.get(id);
+    this.bus.emit('command', record);
+    return record;
   }
 
   get(id: string): CommandRecord {
@@ -159,6 +163,7 @@ export class CommandsService implements OnModuleInit, OnModuleDestroy {
     this.database.db
       .prepare('UPDATE commands SET status = ?, reason = ?, state_json = ?, resolved_at = ? WHERE id = ?')
       .run(status, reason, state ? JSON.stringify(state) : null, Date.now(), id);
+    this.bus.emit('command', this.get(id));
   }
 }
 

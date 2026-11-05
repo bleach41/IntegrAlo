@@ -12,6 +12,8 @@ export interface AppConfig {
   modulesDir: string;
   ackTimeoutMs: number;
   retentionDays: number;
+  /** An online node without telemetry for this long raises the communication alarm. */
+  telemetryTimeoutMs: number;
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -27,5 +29,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     modulesDir: env.INTEGRALO_MODULES_DIR ?? join(__dirname, '..', '..', '..', 'modules'),
     ackTimeoutMs: Number(env.INTEGRALO_ACK_TIMEOUT_MS ?? PROTOCOL_DEFAULTS.ackTimeoutMs),
     retentionDays: Number(env.INTEGRALO_RETENTION_DAYS ?? 60),
+    telemetryTimeoutMs: Number(env.INTEGRALO_TELEMETRY_TIMEOUT_MS ?? 30_000),
   };
 }

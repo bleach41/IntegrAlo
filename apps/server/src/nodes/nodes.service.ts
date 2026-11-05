@@ -1,5 +1,6 @@
 import { AnnounceMessageSchema, NodeStatusSchema } from '@integralo/contract';
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventBus } from '../bus/event-bus';
 import { parseJson } from '../common/json';
 import { DatabaseService } from '../database/database.service';
 import { EventsService } from '../events/events.service';
@@ -45,6 +46,7 @@ export class NodesService {
     private readonly database: DatabaseService,
     private readonly events: EventsService,
     private readonly registry: ModuleRegistryService,
+    private readonly bus: EventBus,
     mqtt: MqttService,
   ) {
     mqtt.on('announce', (nodeId, payload) => this.onAnnounce(nodeId, payload));
@@ -76,7 +78,9 @@ export class NodesService {
       .prepare("UPDATE nodes SET approval = 'approved', approved_at = ?, name = COALESCE(?, name) WHERE id = ?")
       .run(Date.now(), name ?? null, id);
     this.events.record('node.approved', id, actor, { name: name ?? null });
-    return this.get(id);
+    const approved = this.get(id);
+    this.bus.emit('node', approved);
+    return approved;
   }
 
   touch(id: string): void {
@@ -114,6 +118,7 @@ export class NodesService {
         .run(announce.module, announce.fw, now, nodeId);
       if (!existing.online) this.events.record('node.online', nodeId, 'system');
     }
+    this.bus.emit('node', this.get(nodeId));
   }
 
   private onStatus(nodeId: string, payload: Buffer): void {
@@ -124,6 +129,7 @@ export class NodesService {
     if (online === node.online) return;
     this.database.db.prepare('UPDATE nodes SET online = ?, last_seen = ? WHERE id = ?').run(online ? 1 : 0, Date.now(), nodeId);
     this.events.record(online ? 'node.online' : 'node.offline', nodeId, 'system');
+    this.bus.emit('node', this.get(nodeId));
   }
 }
 

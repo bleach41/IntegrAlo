@@ -163,6 +163,49 @@ async function main(): Promise<void> {
     check('user profile cannot change control parameters',
       (await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_params', payload: { hysteresis: 1 } }, userToken)).status === 403);
     check('user profile cannot read the audit log', (await http('GET', '/events', undefined, userToken)).status === 403);
+    // Real time: authenticated WebSocket
+    const WS = (globalThis as any).WebSocket;
+    const ws = new WS(`ws://localhost:${PORT}/api/ws`);
+    const wsEvents: Array<{ event: string; data: any }> = [];
+    ws.onmessage = (e: { data: string }) => wsEvents.push(JSON.parse(e.data));
+    await new Promise((resolve) => (ws.onopen = resolve));
+    ws.send(JSON.stringify({ event: 'auth', data: { token: userToken } }));
+    const wsAuth = await until(async () => wsEvents.find((e) => e.event === 'auth'), 3000);
+    check('WebSocket accepts a valid session', wsAuth?.data.username === 'tony');
+    const wsTelemetry = await until(async () => wsEvents.find((e) => e.event === 'telemetry' && e.data.nodeId === SIM_ID), 5000);
+    check('telemetry pushed in real time', !!wsTelemetry);
+    const anonymous = new WS(`ws://localhost:${PORT}/api/ws`);
+    const closeCode = await new Promise<number>((resolve) => {
+      anonymous.onclose = (e: { code: number }) => resolve(e.code);
+      setTimeout(() => resolve(-1), 8000);
+    });
+    check('WebSocket without authentication is closed', closeCode === 4001, `code ${closeCode}`);
+
+    // RF-05: threshold alarm with its three moments
+    const configs = (await http('GET', `/nodes/${SIM_ID}/alarm-configs`)).data as any[];
+    check('alarm thresholds created from the manifest defaults',
+      configs.some((c) => c.key === 'highTemp' && c.threshold === 28 && c.enabled));
+    const high = await until(async () => {
+      const { data } = await http('GET', `/alarms?nodeId=${SIM_ID}`, undefined, userToken);
+      return (data as any[]).find((a) => a.key === 'highTemp');
+    }, 5000);
+    check('high temperature alarm raised (room at ~30 °C > 28 °C)', high?.state === 'active', high ? `value ${high.raisedValue}` : 'none');
+    const acked = await http('POST', `/alarms/${high?.id}/ack`, undefined, userToken);
+    check('user acknowledges the alarm', acked.data.state === 'acknowledged' && acked.data.ackedBy === 'tony');
+    check('user profile cannot change alarm thresholds',
+      (await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 40 }, userToken)).status === 403);
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 40 });
+    const closed = await until(async () => {
+      const { data } = await http('GET', `/alarms?nodeId=${SIM_ID}&open=false`);
+      const a = (data as any[]).find((x) => x.id === high?.id);
+      return a?.state === 'closed' ? a : null;
+    }, 5000);
+    check('alarm cleared below the new threshold and closed', !!closed);
+    // The alarm was raised right after approval, before this socket connected: only later changes are expected.
+    check('alarm changes pushed in real time',
+      ['acknowledged', 'closed'].every((s) => wsEvents.some((e) => e.event === 'alarm' && e.data.id === high?.id && e.data.state === s)));
+    ws.close();
+
     await http('POST', '/auth/logout', undefined, userToken);
     check('session invalid after logout', (await http('GET', '/nodes', undefined, userToken)).status === 401);
 
@@ -183,11 +226,21 @@ async function main(): Promise<void> {
     check('node marked offline after abrupt stop', !!offline, `${Date.now() - killed} ms`);
     const refused = await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_mode', payload: { mode: 'off' } });
     check('commands to an offline node are refused', refused.status === 409);
+    const commLoss = await until(async () => {
+      const { data } = await http('GET', `/alarms?nodeId=${SIM_ID}`);
+      return (data as any[]).find((a) => a.key === 'commLoss' && a.state === 'active');
+    }, 3000);
+    check('communication loss alarm raised', !!commLoss, commLoss ? `${commLoss.raisedAt - killed} ms after the stop` : 'none');
 
     sim = startSim();
     const back = await until(async () => (await http('GET', `/nodes/${SIM_ID}`)).data.online === true, 5000);
     const node = (await http('GET', `/nodes/${SIM_ID}`)).data;
     check('approved node recognised on reconnection', !!back && node.approval === 'approved');
+    const restored = await until(async () => {
+      const { data } = await http('GET', `/alarms?nodeId=${SIM_ID}`);
+      return (data as any[]).find((a) => a.id === commLoss?.id && a.state === 'cleared');
+    }, 5000);
+    check('communication alarm cleared when telemetry returns (still unacknowledged)', !!restored);
 
     // RF-06: audit trail
     const kinds = new Set(((await http('GET', `/events?nodeId=${SIM_ID}`)).data as any[]).map((e) => e.kind));

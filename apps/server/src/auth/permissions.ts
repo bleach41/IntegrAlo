@@ -11,6 +11,9 @@ export const PERMISSIONS = {
   commandsRead: 'commands.read',
   modulesRead: 'modules.read',
   eventsRead: 'events.read',
+  alarmsRead: 'alarms.read',
+  alarmsAck: 'alarms.ack',
+  alarmsConfigure: 'alarms.configure',
   usersManage: 'users.manage',
 } as const;
 

@@ -48,6 +48,10 @@ export const AlarmDefSchema = z.object({
   key: KeySchema,
   variable: KeySchema,
   type: z.enum(['high', 'low']),
+  /** Initial threshold for a newly approved node; adjustable per node afterwards. */
+  defaultThreshold: z.number().optional(),
+  /** Hysteresis to clear the alarm, which avoids chattering around the threshold. */
+  defaultDeadband: z.number().nonnegative().optional(),
 });
 export type AlarmDef = z.infer<typeof AlarmDefSchema>;
 

@@ -17,7 +17,11 @@ export type EventKind =
   | 'user.logout'
   | 'user.created'
   | 'user.updated'
-  | 'role.updated';
+  | 'role.updated'
+  | 'alarm.raised'
+  | 'alarm.acknowledged'
+  | 'alarm.cleared'
+  | 'alarm.configured';
 
 export interface AuditEvent {
   id: number;

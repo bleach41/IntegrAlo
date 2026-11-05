@@ -1,5 +1,6 @@
 import { TelemetryMessageSchema, TelemetryValue } from '@integralo/contract';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { EventBus } from '../bus/event-bus';
 import { parseJson } from '../common/json';
 import { APP_CONFIG, AppConfig } from '../config';
 import { DatabaseService } from '../database/database.service';
@@ -28,6 +29,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly database: DatabaseService,
     private readonly nodes: NodesService,
+    private readonly bus: EventBus,
     mqtt: MqttService,
   ) {
     mqtt.on('telemetry', (nodeId, payload) => this.onTelemetry(nodeId, payload));
@@ -72,6 +74,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       .prepare('INSERT INTO telemetry (node_id, received_at, seq, values_json) VALUES (?, ?, ?, ?)')
       .run(nodeId, now, result.data.seq, JSON.stringify(result.data.values));
     this.nodes.touch(nodeId);
+    this.bus.emit('telemetry', { nodeId, sample: { receivedAt: now, seq: result.data.seq, values: result.data.values } });
   }
 
   private purge(): void {
