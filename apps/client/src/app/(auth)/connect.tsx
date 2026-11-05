@@ -9,8 +9,9 @@ import { useSession } from '@/features/auth/session.store';
 export default function ConnectScreen() {
   const { t } = useTranslation();
   const connect = useSession((s) => s.connect);
-  // On the web the client is usually opened on the server itself.
-  const [address, setAddress] = useState(Platform.OS === 'web' ? 'localhost' : '');
+  // On the web the app is normally served by the core itself: propose the host it came from
+  // (the default port 4100 is added when connecting).
+  const [address, setAddress] = useState(Platform.OS === 'web' ? (globalThis.location?.hostname ?? 'localhost') : '');
   const [error, setError] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
 
