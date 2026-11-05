@@ -8,6 +8,9 @@ import { APP_CONFIG, AppConfig } from './config';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
+  // Clients authenticate with a bearer token, not cookies, so any origin on the local
+  // network may call the API (the web client can be served from another port).
+  app.enableCors({ origin: true, allowedHeaders: ['content-type', 'authorization'] });
   app.useWebSocketAdapter(new WsAdapter(app));
   app.enableShutdownHooks();
   const config = app.get<AppConfig>(APP_CONFIG);
