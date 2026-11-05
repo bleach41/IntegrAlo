@@ -2,39 +2,57 @@ import { mkdirSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
+import type { NodeBehaviour } from './node/behaviour';
 import { SimulatedNode } from './node/mqtt-node';
+import { TemperatureBehaviour } from './node/temperature-behaviour';
+import { TankBehaviour } from './tank/behaviour';
 
 /**
- * Starts a simulated temperature node.
- * Example: pnpm sim-node -- --time-scale 60
+ * Starts a simulated node of a module.
+ * Examples: pnpm sim-node -- --time-scale 60
+ *           pnpm sim-node -- --module tank-level --time-scale 60
  * Options can also be given as environment variables (INTEGRALO_MQTT_URL, ...).
  */
 const { values } = parseArgs({
   options: {
+    module: { type: 'string', default: 'temperature' },
     broker: { type: 'string', default: process.env.INTEGRALO_MQTT_URL ?? 'mqtt://localhost:1883' },
     'node-id': { type: 'string', default: process.env.INTEGRALO_NODE_ID },
     username: { type: 'string', default: process.env.INTEGRALO_MQTT_USERNAME },
     password: { type: 'string', default: process.env.INTEGRALO_MQTT_PASSWORD },
     'state-dir': { type: 'string', default: '.state' },
     'time-scale': { type: 'string', default: '1' },
-    initial: { type: 'string', default: '30' },
+    /** Initial temperature (°C) or tank level (%). */
+    initial: { type: 'string' },
     'topic-prefix': { type: 'string', default: process.env.INTEGRALO_TOPIC_PREFIX },
   },
 });
 
-/** Like the ESP32, the identity derives from a MAC address: "sim-" + its last 6 hex digits. */
-function defaultNodeId(): string {
+/** Simulated modules: id prefix (several modules can run on one computer), default initial value and factory. */
+const MODULES: Record<string, { idPrefix: string; initial: number; create: (stateFile: string, initial: number) => NodeBehaviour }> = {
+  temperature: { idPrefix: 'sim', initial: 30, create: (file, initial) => new TemperatureBehaviour(file, initial) },
+  'tank-level': { idPrefix: 'tank', initial: 50, create: (file, initial) => new TankBehaviour(file, initial) },
+};
+
+const selected = MODULES[values.module];
+if (!selected) {
+  console.error(`unknown module "${values.module}"; available: ${Object.keys(MODULES).join(', ')}`);
+  process.exit(1);
+}
+
+/** Like the ESP32, the identity derives from a MAC address: prefix + its last 6 hex digits. */
+function defaultNodeId(prefix: string): string {
   for (const addresses of Object.values(networkInterfaces())) {
     for (const a of addresses ?? []) {
       if (!a.internal && a.mac && a.mac !== '00:00:00:00:00:00') {
-        return `sim-${a.mac.replace(/:/g, '').slice(-6).toLowerCase()}`;
+        return `${prefix}-${a.mac.replace(/:/g, '').slice(-6).toLowerCase()}`;
       }
     }
   }
-  return 'sim-000001';
+  return `${prefix}-000001`;
 }
 
-const nodeId = values['node-id'] ?? defaultNodeId();
+const nodeId = values['node-id'] ?? defaultNodeId(selected.idPrefix);
 mkdirSync(values['state-dir'], { recursive: true });
 
 const node = new SimulatedNode({
@@ -42,9 +60,8 @@ const node = new SimulatedNode({
   nodeId,
   username: values.username,
   password: values.password,
-  stateFile: join(values['state-dir'], `${nodeId}.json`),
+  behaviour: selected.create(join(values['state-dir'], `${nodeId}.json`), Number(values.initial ?? selected.initial)),
   timeScale: Number(values['time-scale']),
-  initialTemperatureC: Number(values.initial),
   topicPrefix: values['topic-prefix'],
 });
 node.start();

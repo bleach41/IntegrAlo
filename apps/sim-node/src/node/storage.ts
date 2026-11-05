@@ -1,27 +1,32 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { NodeState, NodeStateSchema, defaultNodeState } from './state';
+import type { ZodType } from 'zod';
 
 /**
- * File-based equivalent of the ESP32 non-volatile memory (Preferences/NVS).
- * The state is written to a temporary file and then renamed: a power cut during the
- * write leaves either the old or the new file, never a half-written one.
+ * File-based equivalent of the ESP32 non-volatile memory (Preferences/NVS), for any
+ * module state described by a schema. The state is written to a temporary file and then
+ * renamed: a power cut during the write leaves either the old or the new file, never a
+ * half-written one.
  */
-export class StateStorage {
-  constructor(private readonly filePath: string) {}
+export class StateStorage<T> {
+  constructor(
+    private readonly filePath: string,
+    private readonly schema: ZodType<T>,
+    private readonly defaults: () => T,
+  ) {}
 
-  load(): NodeState {
+  load(): T {
     if (!existsSync(this.filePath)) {
-      return defaultNodeState();
+      return this.defaults();
     }
     try {
-      return NodeStateSchema.parse(JSON.parse(readFileSync(this.filePath, 'utf8')));
+      return this.schema.parse(JSON.parse(readFileSync(this.filePath, 'utf8')));
     } catch {
       // A corrupt or outdated file must not prevent the node from starting.
-      return defaultNodeState();
+      return this.defaults();
     }
   }
 
-  save(state: NodeState): void {
+  save(state: T): void {
     const tmp = `${this.filePath}.tmp`;
     writeFileSync(tmp, JSON.stringify(state, null, 2));
     renameSync(tmp, this.filePath);

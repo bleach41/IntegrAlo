@@ -1,0 +1,107 @@
+{
+  "id": "tank-level",
+  "version": "0.1.0",
+  "label": { "es": "Nivel de tanque", "en": "Tank level" },
+  "summary": { "primary": "level", "secondary": ["pump", "mode"] },
+  "variables": [
+    { "key": "level", "type": "number", "unit": "%", "decimals": 0, "label": { "es": "Nivel", "en": "Level" } },
+    {
+      "key": "pump",
+      "type": "enum",
+      "values": ["off", "on"],
+      "label": { "es": "Bomba", "en": "Pump" },
+      "valueLabels": { "off": { "es": "Bomba apagada", "en": "Pump off" }, "on": { "es": "Bomba encendida", "en": "Pump on" } }
+    },
+    {
+      "key": "mode",
+      "type": "enum",
+      "values": ["off", "manual", "auto"],
+      "label": { "es": "Modo", "en": "Mode" },
+      "valueLabels": {
+        "off": { "es": "Apagado", "en": "Off" },
+        "manual": { "es": "Manual", "en": "Manual" },
+        "auto": { "es": "Automático", "en": "Automatic" }
+      }
+    },
+    { "key": "volume", "type": "number", "unit": "L", "decimals": 0, "label": { "es": "Volumen", "en": "Volume" } },
+    {
+      "key": "consumption",
+      "type": "number",
+      "unit": "L/min",
+      "decimals": 1,
+      "simulated": true,
+      "label": { "es": "Consumo (simulado)", "en": "Consumption (simulated)" }
+    }
+  ],
+  "commands": [
+    {
+      "type": "set_mode",
+      "label": { "es": "Modo", "en": "Mode" },
+      "fields": {
+        "mode": {
+          "type": "enum",
+          "values": ["off", "manual", "auto"],
+          "valueLabels": {
+            "off": { "es": "Apagado", "en": "Off" },
+            "manual": { "es": "Manual", "en": "Manual" },
+            "auto": { "es": "Automático", "en": "Automatic" }
+          }
+        }
+      }
+    },
+    {
+      "type": "set_pump",
+      "label": { "es": "Bomba (modo manual)", "en": "Pump (manual mode)" },
+      "fields": {
+        "pump": {
+          "type": "enum",
+          "values": ["off", "on"],
+          "valueLabels": { "off": { "es": "Apagar", "en": "Off" }, "on": { "es": "Encender", "en": "On" } }
+        }
+      }
+    },
+    {
+      "type": "set_levels",
+      "label": { "es": "Niveles de arranque y parada", "en": "Start and stop levels" },
+      "partial": true,
+      "fields": {
+        "startLevel": { "type": "number", "label": { "es": "Arranque de la bomba", "en": "Pump start" }, "unit": "%", "min": 5, "max": 90, "step": 5 },
+        "stopLevel": { "type": "number", "label": { "es": "Parada de la bomba", "en": "Pump stop" }, "unit": "%", "min": 10, "max": 100, "step": 5 }
+      }
+    },
+    {
+      "type": "set_simulation",
+      "label": { "es": "Simulación (banco de pruebas)", "en": "Simulation (test bench)" },
+      "partial": true,
+      "fields": {
+        "consumptionLpm": { "type": "number", "label": { "es": "Consumo de la casa", "en": "House consumption" }, "unit": "L/min", "min": 0, "max": 60, "step": 1 }
+      }
+    }
+  ],
+  "parameters": {
+    "startLevel": { "type": "number", "unit": "%", "min": 5, "max": 90, "default": 30 },
+    "stopLevel": { "type": "number", "unit": "%", "min": 10, "max": 100, "default": 90 },
+    "samplePeriodMs": { "type": "number", "unit": "ms", "min": 500, "max": 60000, "default": 2000 }
+  },
+  "alarms": [
+    {
+      "key": "lowLevel",
+      "label": { "es": "Nivel bajo", "en": "Low level" },
+      "variable": "level",
+      "type": "low",
+      "defaultThreshold": 15,
+      "defaultDeadband": 5,
+      "defaultDelayS": 30
+    },
+    {
+      "key": "overflow",
+      "label": { "es": "Riesgo de desbordamiento", "en": "Overflow risk" },
+      "variable": "level",
+      "type": "high",
+      "defaultThreshold": 97,
+      "defaultDeadband": 3,
+      "defaultDelayS": 10
+    }
+  ],
+  "views": ["summary", "trend", "engineering"]
+}

@@ -9,12 +9,8 @@ import {
   TelemetryMessage,
   nodeTopic,
 } from '@integralo/contract';
-import { manifest } from '@integralo/module-temperature';
 import mqtt, { MqttClient } from 'mqtt';
-import { CommandHandler } from './command-handler';
-import { TemperatureSimulation } from './simulation';
-import { NodeState } from './state';
-import { StateStorage } from './storage';
+import type { NodeBehaviour } from './behaviour';
 
 export const FIRMWARE_VERSION = '0.1.0-sim';
 
@@ -23,19 +19,19 @@ export interface SimulatedNodeOptions {
   nodeId: string;
   username?: string;
   password?: string;
-  stateFile: string;
+  /** Module-specific part: process model, control loop and commands. */
+  behaviour: NodeBehaviour;
   /** Simulated seconds per real second. */
   timeScale: number;
-  initialTemperatureC: number;
   topicPrefix?: string;
   log?: (message: string) => void;
 }
 
 /**
- * Simulated node connected by MQTT, behaving as the ESP32 firmware will:
+ * Simulated node connected by MQTT, behaving as the ESP32 firmware will, for any module:
  * - announces itself and its status (retained; "offline" is its Last Will)
  * - keeps running the control loop while disconnected and reconnects by itself (RF-23)
- * - answers every command with an ack (RF-22) and persists its state (RF-24)
+ * - answers every command with an ack (RF-22); the behaviour persists its state (RF-24)
  */
 export class SimulatedNode {
   private client?: MqttClient;
@@ -43,16 +39,12 @@ export class SimulatedNode {
   private periodMs = 0;
   private seq = 0;
   private readonly startedAt = Date.now();
-  private readonly storage: StateStorage;
-  private readonly handler: CommandHandler;
-  private readonly simulation: TemperatureSimulation;
+  private readonly behaviour: NodeBehaviour;
   private readonly log: (message: string) => void;
 
   constructor(private readonly options: SimulatedNodeOptions) {
     this.log = options.log ?? ((m) => console.log(`[${options.nodeId}] ${m}`));
-    this.storage = new StateStorage(options.stateFile);
-    this.handler = new CommandHandler(this.storage.load(), (state) => this.onStateChange(state));
-    this.simulation = new TemperatureSimulation(options.initialTemperatureC);
+    this.behaviour = options.behaviour;
   }
 
   start(): void {
@@ -81,8 +73,8 @@ export class SimulatedNode {
     this.client.on('offline', () => this.log('broker unreachable, control loop keeps running'));
     this.client.on('error', (err) => this.log(`mqtt error: ${err.message}`));
 
-    this.schedule(this.handler.current.params.samplePeriodMs);
-    this.log(`started, mode=${this.handler.current.mode}, setpoint=${this.handler.current.setpoint} °C`);
+    this.schedule(this.behaviour.samplePeriodMs());
+    this.log(`started (${this.behaviour.moduleId}), ${this.behaviour.describe()}`);
   }
 
   async stop(): Promise<void> {
@@ -101,7 +93,7 @@ export class SimulatedNode {
     this.publish('status', 'online');
     const announce: AnnounceMessage = {
       nodeId: this.options.nodeId,
-      module: manifest.id,
+      module: this.behaviour.moduleId,
       fw: FIRMWARE_VERSION,
       uptimeMs: Date.now() - this.startedAt,
     };
@@ -120,19 +112,16 @@ export class SimulatedNode {
       this.log('ignored command: invalid JSON');
       return;
     }
-    const ack: AckMessage | null = this.handler.handle(raw);
+    const ack: AckMessage | null = this.behaviour.handleCommand(raw);
     if (!ack) {
       this.log('ignored command: no valid cmdId');
       return;
     }
     this.publish('ack', ack);
     this.log(`cmd ${ack.cmdId} ${ack.result}${ack.result === 'rejected' ? ` (${ack.reason})` : ''}`);
-  }
-
-  private onStateChange(state: NodeState): void {
-    this.storage.save(state);
-    if (state.params.samplePeriodMs !== this.periodMs) {
-      this.schedule(state.params.samplePeriodMs);
+    // A command may have changed the telemetry period.
+    if (this.behaviour.samplePeriodMs() !== this.periodMs) {
+      this.schedule(this.behaviour.samplePeriodMs());
     }
   }
 
@@ -144,7 +133,7 @@ export class SimulatedNode {
 
   private tick(): void {
     const dtS = (this.periodMs / 1000) * this.options.timeScale;
-    const values = this.simulation.tick(this.handler.current, dtS);
+    const values = this.behaviour.tick(dtS);
     this.seq++;
     if (this.client?.connected) {
       const telemetry: TelemetryMessage = { seq: this.seq, uptimeMs: Date.now() - this.startedAt, values };

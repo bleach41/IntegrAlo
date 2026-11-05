@@ -1,0 +1,7 @@
+{
+  "name": "@integralo/module-tank-level",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tank level module: water tank (cistern) with a pump controlled by level",
+  "main": "manifest.json"
+}

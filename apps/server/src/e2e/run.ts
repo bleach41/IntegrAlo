@@ -19,6 +19,7 @@ const PORT = 4199;
 const API = `http://localhost:${PORT}/api`;
 const SIM_ID = 'sim-e2e002';
 const MUTE_ID = 'sim-mute01';
+const TANK_ID = 'tank-e2e01';
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = ''): void {
@@ -81,7 +82,7 @@ async function main(): Promise<void> {
 
   const probe = await mqtt.connectAsync(BROKER, { clientId: `integralo-core-e2e-${process.pid}` });
   const clearRetained = async () => {
-    for (const id of [SIM_ID, MUTE_ID]) {
+    for (const id of [SIM_ID, MUTE_ID, TANK_ID]) {
       for (const kind of ['announce', 'status'] as const) {
         await probe.publishAsync(nodeTopic(id, kind, PREFIX), '', { qos: 1, retain: true });
       }
@@ -96,6 +97,7 @@ async function main(): Promise<void> {
     INTEGRALO_TOPIC_PREFIX: PREFIX,
   });
   let sim: ChildProcess | undefined;
+  let tank: ChildProcess | undefined;
 
   try {
     const health = await until(async () => {
@@ -278,6 +280,29 @@ async function main(): Promise<void> {
     }, 5000);
     check('communication alarm cleared when telemetry returns (still unacknowledged)', !!restored);
 
+    // P6: a second module (tank level) works with no module-specific code in the core
+    tank = spawnNode(simScript, ['--module', 'tank-level', '--node-id', TANK_ID, '--state-dir', workDir, '--broker', BROKER, '--topic-prefix', PREFIX]);
+    const modulesNow = (await http('GET', '/modules')).data as any[];
+    check('P6: tank-level module loaded from its manifest', modulesNow.some((m) => m.id === 'tank-level'));
+    const tankPending = await until(async () => (await http('GET', `/nodes/${TANK_ID}`)).data.approval === 'pending', 5000);
+    check('P6: tank node registered as pending', !!tankPending);
+    await http('POST', `/nodes/${TANK_ID}/approve`, { name: 'Cisterna' });
+    const tankSample = await until(async () => {
+      const { data } = await http('GET', `/nodes/${TANK_ID}/telemetry`);
+      return (data as any[]).find((s) => typeof s.values.level === 'number');
+    }, 8000);
+    check('P6: tank telemetry stored (level)', !!tankSample, tankSample ? `level ${tankSample.values.level} %` : 'none');
+    const manual = await http('POST', `/nodes/${TANK_ID}/commands`, { type: 'set_mode', payload: { mode: 'manual' } });
+    check('P6: tank command confirmed', (await commandOutcome(manual.data.id, 3000))?.status === 'confirmed');
+    const pumpOn = await http('POST', `/nodes/${TANK_ID}/commands`, { type: 'set_pump', payload: { pump: 'on' } });
+    check('P6: pump started in manual mode', (await commandOutcome(pumpOn.data.id, 3000))?.status === 'confirmed');
+    const tankConfigs = (await http('GET', `/nodes/${TANK_ID}/alarm-configs`)).data as any[];
+    check('P6: tank alarms created from its manifest', ['lowLevel', 'overflow'].every((k) => tankConfigs.some((c) => c.key === k)));
+    const userAgain = (await http('POST', '/auth/login', { username: 'tony', password: 'tony-e2e-pass' })).data.token as string;
+    check('P6: generic permissions apply to the new module (user may set the mode, not the pump)',
+      (await http('POST', `/nodes/${TANK_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } }, userAgain)).status === 201 &&
+        (await http('POST', `/nodes/${TANK_ID}/commands`, { type: 'set_pump', payload: { pump: 'off' } }, userAgain)).status === 403);
+
     // RF-06: audit trail
     const kinds = new Set(((await http('GET', `/events?nodeId=${SIM_ID}`)).data as any[]).map((e) => e.kind));
     const expected = ['node.discovered', 'node.approved', 'node.online', 'node.offline', 'command.sent', 'command.confirmed', 'command.rejected'];
@@ -291,6 +316,7 @@ async function main(): Promise<void> {
     check('audit log never contains passwords', !all.includes('tony-e2e-pass') && !all.includes('admin-e2e-pass'));
   } finally {
     sim?.kill('SIGKILL');
+    tank?.kill('SIGKILL');
     server.kill('SIGKILL');
     await sleep(500);
     await clearRetained();
