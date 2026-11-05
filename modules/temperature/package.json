@@ -1,0 +1,7 @@
+{
+  "name": "@integralo/module-temperature",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Temperature module for a room with air conditioning",
+  "main": "manifest.json"
+}

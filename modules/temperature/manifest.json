@@ -1,0 +1,26 @@
+{
+  "id": "temperature",
+  "version": "0.1.0",
+  "variables": [
+    { "key": "temperature", "type": "number", "unit": "°C" },
+    { "key": "setpoint", "type": "number", "unit": "°C" },
+    { "key": "output", "type": "number", "unit": "%" },
+    { "key": "mode", "type": "enum", "values": ["off", "manual", "auto"] },
+    { "key": "outdoorTemperature", "type": "number", "unit": "°C", "simulated": true }
+  ],
+  "commands": ["set_setpoint", "set_mode", "set_output", "set_params", "set_simulation"],
+  "parameters": {
+    "setpointMin": { "type": "number", "unit": "°C", "default": 16 },
+    "setpointMax": { "type": "number", "unit": "°C", "default": 30 },
+    "algorithm": { "type": "enum", "values": ["onoff", "pi"], "default": "onoff" },
+    "hysteresis": { "type": "number", "unit": "°C", "min": 0.1, "max": 5, "default": 0.5 },
+    "kp": { "type": "number", "min": 0 },
+    "ki": { "type": "number", "min": 0 },
+    "samplePeriodMs": { "type": "number", "unit": "ms", "min": 500, "max": 60000, "default": 2000 }
+  },
+  "alarms": [
+    { "key": "highTemp", "variable": "temperature", "type": "high" },
+    { "key": "lowTemp", "variable": "temperature", "type": "low" }
+  ],
+  "views": ["summary", "trend", "engineering"]
+}
