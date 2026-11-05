@@ -27,7 +27,8 @@ function SignedIn() {
   const unacknowledged = (useOpenAlarms().data ?? []).filter((a) => a.ackedAt === null).length;
 
   return (
-    <Tabs>
+    // Tabs renders a plain View: without flex 1 its height is unbounded and screens cannot scroll.
+    <Tabs style={{ flex: 1 }}>
       <View className={`flex-1 bg-canvas ${wide ? 'flex-row' : ''}`}>
         {wide ? <NavBar layout="side" alarmCount={unacknowledged} /> : null}
         <View className="flex-1">
