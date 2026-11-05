@@ -99,6 +99,8 @@ export const AlarmDefSchema = z.object({
   defaultThreshold: z.number().optional(),
   /** Hysteresis to clear the alarm, which avoids chattering around the threshold. */
   defaultDeadband: z.number().nonnegative().optional(),
+  /** Seconds the condition must last before the alarm is raised (filters brief transients). */
+  defaultDelayS: z.number().nonnegative().optional(),
 });
 export type AlarmDef = z.infer<typeof AlarmDefSchema>;
 

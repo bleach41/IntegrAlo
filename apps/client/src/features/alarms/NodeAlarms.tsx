@@ -66,6 +66,11 @@ export function AlarmList({ alarms, showNode = false }: { alarms: AlarmRecord[];
               {t('alarms.raisedAt', { time: new Date(alarm.raisedAt).toLocaleTimeString(i18n.language) })}
               {alarm.raisedValue !== null ? ` · ${t('alarms.value', { value: alarm.raisedValue.toLocaleString(i18n.language) })}` : ''}
             </Text>
+            {alarm.count > 1 ? (
+              <Text className="ml-7 mt-1 text-xs font-medium text-ink">
+                {t('alarms.repeated', { count: alarm.count, time: new Date(alarm.lastRaisedAt).toLocaleTimeString(i18n.language) })}
+              </Text>
+            ) : null}
             {alarm.ackedBy ? <Text className="ml-7 mt-1 text-xs text-muted">{t('alarms.ackedBy', { user: alarm.ackedBy })}</Text> : null}
             {canAck && alarm.ackedAt === null ? (
               <Button

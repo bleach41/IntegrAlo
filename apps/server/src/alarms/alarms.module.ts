@@ -16,6 +16,7 @@ const ConfigBodySchema = z
   .object({
     threshold: z.number().optional(),
     deadband: z.number().nonnegative().optional(),
+    delayS: z.number().min(0).max(3600).optional(),
     enabled: z.boolean().optional(),
   })
   .strict();

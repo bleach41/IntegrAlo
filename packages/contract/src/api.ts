@@ -40,12 +40,19 @@ export interface CommandRecord {
 /** active: not acknowledged; acknowledged: still active; cleared: normal again but not acknowledged; closed: both. */
 export type AlarmState = 'active' | 'acknowledged' | 'cleared' | 'closed';
 
+/**
+ * An alarm is a state of one point (node + alarm), not one message per event: while it is
+ * not acknowledged, new activations reuse the same record and increase `count`.
+ */
 export interface AlarmRecord {
   id: number;
   nodeId: string;
   key: string;
   state: AlarmState;
   raisedAt: number;
+  /** Activations of this record (1 the first time). */
+  count: number;
+  lastRaisedAt: number;
   raisedValue: number | null;
   detail: string | null;
   ackedAt: number | null;

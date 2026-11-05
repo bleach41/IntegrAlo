@@ -117,4 +117,31 @@ export const MIGRATIONS: string[] = [
 
   INSERT INTO role_permissions (role_id, permission) VALUES ('user', 'alarms.read'), ('user', 'alarms.ack');
   `,
+  `
+  -- An alarm occurrence is reused while not acknowledged (ISA-18.2: one state per point),
+  -- and an on-delay filters brief transients.
+  ALTER TABLE alarms ADD COLUMN count INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE alarms ADD COLUMN last_raised_at INTEGER;
+  UPDATE alarms SET last_raised_at = raised_at;
+  ALTER TABLE alarm_configs ADD COLUMN delay_s REAL NOT NULL DEFAULT 0;
+  `,
+  `
+  -- Consolidates occurrences created before migration 4 so that each point keeps at most
+  -- one open occurrence: the newest unacknowledged one absorbs the count of the older
+  -- ones, which were already cleared and are closed as acknowledged by "system".
+  -- Nothing is deleted; the audit log keeps every original activation.
+  UPDATE alarms
+  SET count = count + (
+    SELECT COALESCE(SUM(o.count), 0) FROM alarms o
+    WHERE o.node_id = alarms.node_id AND o.alarm_key = alarms.alarm_key
+      AND o.acked_at IS NULL AND o.cleared_at IS NOT NULL AND o.id < alarms.id
+  )
+  WHERE acked_at IS NULL
+    AND id = (SELECT MAX(m.id) FROM alarms m WHERE m.node_id = alarms.node_id AND m.alarm_key = alarms.alarm_key AND m.acked_at IS NULL);
+
+  UPDATE alarms
+  SET acked_at = cleared_at, acked_by = 'system'
+  WHERE acked_at IS NULL AND cleared_at IS NOT NULL
+    AND id < (SELECT MAX(m.id) FROM alarms m WHERE m.node_id = alarms.node_id AND m.alarm_key = alarms.alarm_key AND m.acked_at IS NULL);
+  `,
 ];

@@ -92,6 +92,7 @@ const en: typeof es = {
     raisedAt: 'Since {{time}}',
     value: 'Value: {{value}}',
     ackedBy: 'Acknowledged by {{user}}',
+    repeated: 'Raised {{count}} times · last at {{time}}',
   },
   brand: {
     tagline: 'Local supervision and control',

@@ -109,7 +109,8 @@
       "variable": "temperature",
       "type": "high",
       "defaultThreshold": 28,
-      "defaultDeadband": 0.5
+      "defaultDeadband": 0.5,
+      "defaultDelayS": 60
     },
     {
       "key": "lowTemp",
@@ -117,7 +118,8 @@
       "variable": "temperature",
       "type": "low",
       "defaultThreshold": 18,
-      "defaultDeadband": 0.5
+      "defaultDeadband": 0.5,
+      "defaultDelayS": 60
     }
   ],
   "views": ["summary", "trend", "engineering"]

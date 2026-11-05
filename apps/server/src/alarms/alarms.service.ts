@@ -1,3 +1,4 @@
+import type { AlarmRecord } from '@integralo/contract';
 import { Inject, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventBus } from '../bus/event-bus';
 import { APP_CONFIG, AppConfig } from '../config';
@@ -6,13 +7,11 @@ import { EventsService } from '../events/events.service';
 import { NodeInfo, NodesService } from '../nodes/nodes.service';
 import { ModuleRegistryService } from '../registry/module-registry.service';
 
+export type { AlarmRecord };
+
 /** Built-in alarm of every approved node, independent of its module. */
 export const COMM_LOSS = 'commLoss';
 const WATCHDOG_INTERVAL_MS = 5000;
-
-import type { AlarmRecord } from '@integralo/contract';
-
-export type { AlarmRecord };
 
 export interface AlarmConfig {
   key: string;
@@ -20,6 +19,8 @@ export interface AlarmConfig {
   type: 'high' | 'low';
   threshold: number;
   deadband: number;
+  /** Seconds the condition must last before the alarm is raised. */
+  delayS: number;
   enabled: boolean;
 }
 
@@ -34,20 +35,38 @@ interface AlarmRow {
   acked_by: string | null;
   cleared_at: number | null;
   cleared_value: number | null;
+  count: number;
+  last_raised_at: number | null;
+}
+
+interface ConfigRow {
+  alarm_key: string;
+  variable: string;
+  type: 'high' | 'low';
+  threshold: number;
+  deadband: number;
+  delay_s: number;
+  enabled: number;
 }
 
 /**
  * Alarms (RF-05) with the three moments of a SCADA alarm: raised, acknowledged by a
- * person, and cleared when the condition returns to normal. An occurrence is closed only
- * when it is both acknowledged and cleared.
- * - Threshold alarms come from the module manifest; a deadband avoids chattering:
- *   a high alarm raised above T clears only below T − deadband.
- * - The communication alarm is raised when an approved node goes offline or stops
- *   sending telemetry, and clears when telemetry arrives again.
+ * person, and cleared when the condition returns to normal. Following ISA-18.2, an alarm
+ * is a state of one point (node + alarm), not a message per event:
+ * - while an occurrence is not acknowledged, a new activation reuses it (count + 1), so
+ *   the list never grows beyond the number of alarm points;
+ * - an occurrence is closed only when it is both acknowledged and cleared; the next
+ *   activation starts a new one.
+ * Chattering is filtered twice: a deadband (a high alarm raised above T clears only below
+ * T − deadband) and an on-delay (the condition must last delayS seconds).
+ * The communication alarm is raised when an approved node goes offline or stops sending
+ * telemetry, and clears when telemetry arrives again.
  */
 @Injectable()
 export class AlarmsService implements OnModuleInit, OnModuleDestroy {
   private readonly lastTelemetry = new Map<string, number>();
+  /** When each threshold condition started to hold, for the on-delay ("node:key" → ms). */
+  private readonly pendingSince = new Map<string, number>();
   private readonly startedAt = Date.now();
   private watchdog?: NodeJS.Timeout;
 
@@ -100,31 +119,33 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
 
   configs(nodeId: string): AlarmConfig[] {
     this.nodes.get(nodeId);
-    const rows = this.database.db.prepare('SELECT * FROM alarm_configs WHERE node_id = ? ORDER BY alarm_key').all(nodeId) as Array<{
-      alarm_key: string;
-      variable: string;
-      type: 'high' | 'low';
-      threshold: number;
-      deadband: number;
-      enabled: number;
-    }>;
+    const rows = this.database.db
+      .prepare('SELECT * FROM alarm_configs WHERE node_id = ? ORDER BY alarm_key')
+      .all(nodeId) as unknown as ConfigRow[];
     return rows.map((r) => ({
       key: r.alarm_key,
       variable: r.variable,
       type: r.type,
       threshold: r.threshold,
       deadband: r.deadband,
+      delayS: r.delay_s,
       enabled: r.enabled === 1,
     }));
   }
 
-  configure(nodeId: string, key: string, changes: Partial<Pick<AlarmConfig, 'threshold' | 'deadband' | 'enabled'>>, actor: string): AlarmConfig {
+  configure(
+    nodeId: string,
+    key: string,
+    changes: Partial<Pick<AlarmConfig, 'threshold' | 'deadband' | 'delayS' | 'enabled'>>,
+    actor: string,
+  ): AlarmConfig {
     const current = this.configs(nodeId).find((c) => c.key === key);
     if (!current) throw new NotFoundException(`node ${nodeId} has no alarm ${key}`);
     const next = { ...current, ...changes };
     this.database.db
-      .prepare('UPDATE alarm_configs SET threshold = ?, deadband = ?, enabled = ? WHERE node_id = ? AND alarm_key = ?')
-      .run(next.threshold, next.deadband, next.enabled ? 1 : 0, nodeId, key);
+      .prepare('UPDATE alarm_configs SET threshold = ?, deadband = ?, delay_s = ?, enabled = ? WHERE node_id = ? AND alarm_key = ?')
+      .run(next.threshold, next.deadband, next.delayS, next.enabled ? 1 : 0, nodeId, key);
+    this.pendingSince.delete(`${nodeId}:${key}`);
     this.events.record('alarm.configured', nodeId, actor, { key, ...changes });
     return next;
   }
@@ -136,19 +157,32 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private onTelemetry(nodeId: string, values: Record<string, unknown>): void {
-    this.lastTelemetry.set(nodeId, Date.now());
+    const now = Date.now();
+    this.lastTelemetry.set(nodeId, now);
     this.clear(nodeId, COMM_LOSS, null);
 
     for (const config of this.configs(nodeId)) {
       const value = values[config.variable];
-      if (!config.enabled || typeof value !== 'number') continue;
+      const pendingKey = `${nodeId}:${config.key}`;
+      if (!config.enabled || typeof value !== 'number') {
+        this.pendingSince.delete(pendingKey);
+        continue;
+      }
+      const high = config.type === 'high';
+      const exceeded = high ? value > config.threshold : value < config.threshold;
+      const normal = high ? value <= config.threshold - config.deadband : value >= config.threshold + config.deadband;
       const active = this.activeRow(nodeId, config.key) !== undefined;
-      if (config.type === 'high') {
-        if (!active && value > config.threshold) this.raise(nodeId, config.key, value, `> ${config.threshold}`);
-        else if (active && value <= config.threshold - config.deadband) this.clear(nodeId, config.key, value);
-      } else {
-        if (!active && value < config.threshold) this.raise(nodeId, config.key, value, `< ${config.threshold}`);
-        else if (active && value >= config.threshold + config.deadband) this.clear(nodeId, config.key, value);
+
+      if (!exceeded) this.pendingSince.delete(pendingKey);
+      if (exceeded && !active) {
+        const since = this.pendingSince.get(pendingKey) ?? now;
+        this.pendingSince.set(pendingKey, since);
+        if (now - since >= config.delayS * 1000) {
+          this.pendingSince.delete(pendingKey);
+          this.raise(nodeId, config.key, value, `${high ? '>' : '<'} ${config.threshold}`);
+        }
+      } else if (normal && active) {
+        this.clear(nodeId, config.key, value);
       }
     }
   }
@@ -167,21 +201,43 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
     const manifest = this.registry.get(node.module);
     if (!manifest) return;
     const insert = this.database.db.prepare(
-      'INSERT OR IGNORE INTO alarm_configs (node_id, alarm_key, variable, type, threshold, deadband, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      `INSERT OR IGNORE INTO alarm_configs (node_id, alarm_key, variable, type, threshold, deadband, delay_s, enabled)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const alarm of manifest.alarms) {
       const hasDefault = alarm.defaultThreshold !== undefined;
-      insert.run(node.id, alarm.key, alarm.variable, alarm.type, alarm.defaultThreshold ?? 0, alarm.defaultDeadband ?? 0, hasDefault ? 1 : 0);
+      insert.run(
+        node.id,
+        alarm.key,
+        alarm.variable,
+        alarm.type,
+        alarm.defaultThreshold ?? 0,
+        alarm.defaultDeadband ?? 0,
+        alarm.defaultDelayS ?? 0,
+        hasDefault ? 1 : 0,
+      );
     }
   }
 
+  /** Raises the alarm, or reactivates its unacknowledged occurrence instead of creating another. */
   private raise(nodeId: string, key: string, value: number | null, detail: string): void {
-    if (this.activeRow(nodeId, key)) return;
-    const { lastInsertRowid } = this.database.db
-      .prepare('INSERT INTO alarms (node_id, alarm_key, raised_at, raised_value, detail) VALUES (?, ?, ?, ?, ?)')
-      .run(nodeId, key, Date.now(), value, detail);
-    this.events.record('alarm.raised', nodeId, 'system', { alarmId: Number(lastInsertRowid), key, value, detail });
-    this.publish(Number(lastInsertRowid));
+    const open = this.openRow(nodeId, key);
+    if (open && open.cleared_at === null) return; // already active
+    const now = Date.now();
+    let id: number;
+    if (open) {
+      this.database.db
+        .prepare('UPDATE alarms SET cleared_at = NULL, cleared_value = NULL, count = count + 1, last_raised_at = ? WHERE id = ?')
+        .run(now, open.id);
+      id = open.id;
+    } else {
+      const { lastInsertRowid } = this.database.db
+        .prepare('INSERT INTO alarms (node_id, alarm_key, raised_at, last_raised_at, raised_value, detail) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(nodeId, key, now, now, value, detail);
+      id = Number(lastInsertRowid);
+    }
+    this.events.record('alarm.raised', nodeId, 'system', { alarmId: id, key, value, detail, reactivated: !!open });
+    this.publish(id);
   }
 
   private clear(nodeId: string, key: string, value: number | null): void {
@@ -195,6 +251,15 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
   private activeRow(nodeId: string, key: string): AlarmRow | undefined {
     return this.database.db
       .prepare('SELECT * FROM alarms WHERE node_id = ? AND alarm_key = ? AND cleared_at IS NULL ORDER BY id DESC LIMIT 1')
+      .get(nodeId, key) as AlarmRow | undefined;
+  }
+
+  /** The occurrence not yet closed (active, or cleared but unacknowledged). */
+  private openRow(nodeId: string, key: string): AlarmRow | undefined {
+    return this.database.db
+      .prepare(
+        'SELECT * FROM alarms WHERE node_id = ? AND alarm_key = ? AND (cleared_at IS NULL OR acked_at IS NULL) ORDER BY id DESC LIMIT 1',
+      )
       .get(nodeId, key) as AlarmRow | undefined;
   }
 
@@ -218,6 +283,8 @@ function toRecord(row: AlarmRow): AlarmRecord {
     key: row.alarm_key,
     state: cleared ? (acked ? 'closed' : 'cleared') : acked ? 'acknowledged' : 'active',
     raisedAt: row.raised_at,
+    count: row.count,
+    lastRaisedAt: row.last_raised_at ?? row.raised_at,
     raisedValue: row.raised_value,
     detail: row.detail,
     ackedAt: row.acked_at,

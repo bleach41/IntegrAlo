@@ -90,6 +90,7 @@ const es = {
     raisedAt: 'Desde las {{time}}',
     value: 'Valor: {{value}}',
     ackedBy: 'Reconocida por {{user}}',
+    repeated: 'Se activó {{count}} veces · última a las {{time}}',
   },
   brand: {
     tagline: 'Supervisión y control local',
