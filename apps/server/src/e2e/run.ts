@@ -13,6 +13,8 @@ import mqtt from 'mqtt';
  * Usage: pnpm --filter @integralo/server e2e  (needs Mosquitto on INTEGRALO_MQTT_URL)
  */
 const BROKER = process.env.INTEGRALO_MQTT_URL ?? 'mqtt://localhost:1883';
+/** Own topic prefix, so a platform running on the same broker does not register the test nodes. */
+const PREFIX = 'integralo-e2e';
 const PORT = 4199;
 const API = `http://localhost:${PORT}/api`;
 const SIM_ID = 'sim-e2e002';
@@ -75,13 +77,13 @@ async function main(): Promise<void> {
   const workDir = mkdtempSync(join(tmpdir(), 'integralo-core-e2e-'));
   const serverScript = join(__dirname, '..', 'main.js');
   const simScript = join(__dirname, '..', '..', '..', 'sim-node', 'dist', 'index.js');
-  const startSim = () => spawnNode(simScript, ['--node-id', SIM_ID, '--state-dir', workDir, '--broker', BROKER]);
+  const startSim = () => spawnNode(simScript, ['--node-id', SIM_ID, '--state-dir', workDir, '--broker', BROKER, '--topic-prefix', PREFIX]);
 
   const probe = await mqtt.connectAsync(BROKER, { clientId: `integralo-core-e2e-${process.pid}` });
   const clearRetained = async () => {
     for (const id of [SIM_ID, MUTE_ID]) {
       for (const kind of ['announce', 'status'] as const) {
-        await probe.publishAsync(nodeTopic(id, kind), '', { qos: 1, retain: true });
+        await probe.publishAsync(nodeTopic(id, kind, PREFIX), '', { qos: 1, retain: true });
       }
     }
   };
@@ -91,6 +93,7 @@ async function main(): Promise<void> {
     INTEGRALO_PORT: String(PORT),
     INTEGRALO_DB_PATH: join(workDir, 'e2e.sqlite'),
     INTEGRALO_MQTT_URL: BROKER,
+    INTEGRALO_TOPIC_PREFIX: PREFIX,
   });
   let sim: ChildProcess | undefined;
 
@@ -138,6 +141,10 @@ async function main(): Promise<void> {
     check('user profile cannot approve nodes', (await http('POST', `/nodes/${SIM_ID}/approve`, {}, userToken)).status === 403);
     const approved = await http('POST', `/nodes/${SIM_ID}/approve`, { name: 'Habitación 1' });
     check('node approved with a name', approved.status === 201 && approved.data.approval === 'approved' && approved.data.name === 'Habitación 1');
+    const initialConfigs = (await http('GET', `/nodes/${SIM_ID}/alarm-configs`)).data as any[];
+    check('alarm on-delay taken from the manifest (60 s)', initialConfigs.some((c) => c.key === 'highTemp' && c.delayS === 60));
+    // Without delay from here on, so the test does not wait a minute for each alarm.
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { delayS: 0 });
 
     // P2: telemetry storage
     await sleep(5000);
@@ -213,12 +220,34 @@ async function main(): Promise<void> {
       ['acknowledged', 'closed'].every((s) => wsEvents.some((e) => e.event === 'alarm' && e.data.id === high?.id && e.data.state === s)));
     ws.close();
 
+    // ISA-18.2: a repeated activation before acknowledgement reuses the same occurrence
+    const highAlarms = async () =>
+      ((await http('GET', `/alarms?nodeId=${SIM_ID}`)).data as any[]).filter((a) => a.key === 'highTemp');
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 20 });
+    const second = await until(async () => (await highAlarms()).find((a) => a.state === 'active'), 5000);
+    check('alarm raised again after it was closed (new occurrence)', !!second && second.id !== high?.id && second.count === 1);
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 40 });
+    await until(async () => (await highAlarms()).find((a) => a.state === 'cleared'), 5000);
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 20 });
+    const again = await until(async () => (await highAlarms()).find((a) => a.state === 'active' && a.count === 2), 5000);
+    const openHigh = await highAlarms();
+    check('unacknowledged alarm reactivated instead of duplicated', again?.id === second?.id && openHigh.length === 1, again ? `count ${again.count}` : 'none');
+
+    // On-delay: a condition shorter than delayS raises nothing
+    await http('POST', `/alarms/${second?.id}/ack`);
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 40 });
+    await until(async () => (await highAlarms()).length === 0, 5000);
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 20, delayS: 30 });
+    await sleep(5000);
+    check('on-delay holds back a condition shorter than the delay', (await highAlarms()).length === 0);
+    await http('PUT', `/nodes/${SIM_ID}/alarm-configs/highTemp`, { threshold: 40, delayS: 0 });
+
     await http('POST', '/auth/logout', undefined, userToken);
     check('session invalid after logout', (await http('GET', '/nodes', undefined, userToken)).status === 401);
 
     // P3: unconfirmed — a node that is online but never answers
-    await probe.publishAsync(nodeTopic(MUTE_ID, 'announce'), JSON.stringify({ nodeId: MUTE_ID, module: 'temperature', fw: 'mute', uptimeMs: 0 }), { qos: 1, retain: true });
-    await probe.publishAsync(nodeTopic(MUTE_ID, 'status'), 'online', { qos: 1, retain: true });
+    await probe.publishAsync(nodeTopic(MUTE_ID, 'announce', PREFIX), JSON.stringify({ nodeId: MUTE_ID, module: 'temperature', fw: 'mute', uptimeMs: 0 }), { qos: 1, retain: true });
+    await probe.publishAsync(nodeTopic(MUTE_ID, 'status', PREFIX), 'online', { qos: 1, retain: true });
     await until(async () => (await http('GET', `/nodes/${MUTE_ID}`)).data.online === true, 5000);
     await http('POST', `/nodes/${MUTE_ID}/approve`, {});
     const muteCmd = await http('POST', `/nodes/${MUTE_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } });

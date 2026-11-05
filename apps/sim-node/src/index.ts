@@ -18,6 +18,7 @@ const { values } = parseArgs({
     'state-dir': { type: 'string', default: '.state' },
     'time-scale': { type: 'string', default: '1' },
     initial: { type: 'string', default: '30' },
+    'topic-prefix': { type: 'string', default: process.env.INTEGRALO_TOPIC_PREFIX },
   },
 });
 
@@ -44,6 +45,7 @@ const node = new SimulatedNode({
   stateFile: join(values['state-dir'], `${nodeId}.json`),
   timeScale: Number(values['time-scale']),
   initialTemperatureC: Number(values.initial),
+  topicPrefix: values['topic-prefix'],
 });
 node.start();
 

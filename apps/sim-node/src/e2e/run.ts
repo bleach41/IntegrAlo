@@ -21,7 +21,9 @@ import mqtt, { MqttClient } from 'mqtt';
  */
 const BROKER = process.env.INTEGRALO_MQTT_URL ?? 'mqtt://localhost:1883';
 const NODE_ID = 'sim-e2e001';
-const t = (kind: Parameters<typeof nodeTopic>[1]) => nodeTopic(NODE_ID, kind);
+/** Own topic prefix, so a platform running on the same broker does not see the test node. */
+const PREFIX = 'integralo-e2e';
+const t = (kind: Parameters<typeof nodeTopic>[1]) => nodeTopic(NODE_ID, kind, PREFIX);
 
 interface Received {
   topic: string;
@@ -73,7 +75,7 @@ class Probe {
 }
 
 function startNode(stateDir: string): ChildProcess {
-  return spawn(process.execPath, [join(__dirname, '..', 'index.js'), '--node-id', NODE_ID, '--state-dir', stateDir, '--broker', BROKER], {
+  return spawn(process.execPath, [join(__dirname, '..', 'index.js'), '--node-id', NODE_ID, '--state-dir', stateDir, '--broker', BROKER, '--topic-prefix', PREFIX], {
     stdio: 'ignore',
   });
 }
@@ -84,7 +86,7 @@ async function main(): Promise<void> {
   const stateDir = mkdtempSync(join(tmpdir(), 'integralo-e2e-'));
   const probe = await Probe.connect();
   await probe.clearRetained();
-  await probe.client.subscribeAsync(`integralo/nodes/${NODE_ID}/#`, { qos: 1 });
+  await probe.client.subscribeAsync(`${PREFIX}/nodes/${NODE_ID}/#`, { qos: 1 });
 
   const started = Date.now();
   let node = startNode(stateDir);
