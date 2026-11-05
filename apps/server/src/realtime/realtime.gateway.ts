@@ -30,6 +30,8 @@ const AUTH_TIMEOUT_MS = 5000;
 const REVALIDATE_MS = 60_000;
 /** Close code for "authentication failed" (4000–4999 is reserved for applications). */
 const CLOSE_UNAUTHORIZED = 4001;
+/** Standard close code "going away" (server shutting down); clients reconnect later. */
+const CLOSE_GOING_AWAY = 1001;
 
 /** Permission a client needs to receive each kind of change. */
 const REQUIRED: Record<keyof BusEvents, string> = {
@@ -72,8 +74,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.clients.delete(socket);
   }
 
+  /** Open sockets would keep the HTTP server alive and block the shutdown: close them first. */
   onModuleDestroy(): void {
     clearInterval(this.revalidate);
+    for (const socket of this.clients.keys()) socket.close(CLOSE_GOING_AWAY, 'server shutting down');
+    this.clients.clear();
   }
 
   @SubscribeMessage('auth')

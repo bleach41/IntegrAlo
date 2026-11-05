@@ -57,8 +57,9 @@ export class MqttService implements OnApplicationBootstrap, OnModuleDestroy {
     this.client.on('message', (topic, payload) => this.dispatch(topic, payload));
   }
 
+  /** Forced end: waiting for in-flight messages could block the shutdown indefinitely. */
   async onModuleDestroy(): Promise<void> {
-    await this.client?.endAsync();
+    await this.client?.endAsync(true);
   }
 
   async publish(nodeId: string, kind: NodeTopicKind, body: string): Promise<void> {

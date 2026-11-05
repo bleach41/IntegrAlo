@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { APP_CONFIG, AppConfig } from '../config';
 import { MIGRATIONS } from './migrations';
 
@@ -12,7 +12,7 @@ import { MIGRATIONS } from './migrations';
  * but never corrupts the database (requirement RNF-02).
  */
 @Injectable()
-export class DatabaseService implements OnModuleDestroy {
+export class DatabaseService implements OnApplicationShutdown {
   private readonly logger = new Logger(DatabaseService.name);
   readonly db: DatabaseSync;
 
@@ -25,9 +25,17 @@ export class DatabaseService implements OnModuleDestroy {
     this.migrate();
   }
 
-  onModuleDestroy(): void {
+  /**
+   * Last step of the shutdown, after the HTTP server stopped accepting requests;
+   * closing it earlier (onModuleDestroy) left requests running against a closed database.
+   */
+  onApplicationShutdown(): void {
+    if (this.closed) return;
+    this.closed = true;
     this.db.close();
   }
+
+  private closed = false;
 
   /** Runs pending migrations in order, each inside a transaction. */
   private migrate(): void {
