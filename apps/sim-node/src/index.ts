@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -11,6 +11,7 @@ import { TankBehaviour } from './tank/behaviour';
  * Starts a simulated node of a module.
  * Examples: pnpm sim-node -- --time-scale 60
  *           pnpm sim-node -- --module tank-level --time-scale 60
+ *           pnpm sim-node -- --settings ../../.data/settings.json   (broker started by the supervisor)
  * Options can also be given as environment variables (INTEGRALO_MQTT_URL, ...).
  */
 const { values } = parseArgs({
@@ -25,8 +26,22 @@ const { values } = parseArgs({
     /** Initial temperature (°C) or tank level (%). */
     initial: { type: 'string' },
     'topic-prefix': { type: 'string', default: process.env.INTEGRALO_TOPIC_PREFIX },
+    /** Supervisor settings.json: takes the broker port, topic prefix and node account from it. */
+    settings: { type: 'string' },
   },
 });
+
+if (values.settings) {
+  const s = JSON.parse(readFileSync(values.settings, 'utf8')) as {
+    brokerPort: number;
+    topicPrefix: string;
+    nodes: { username: string; password: string };
+  };
+  values.broker = `mqtt://localhost:${s.brokerPort}`;
+  values['topic-prefix'] = s.topicPrefix;
+  values.username = s.nodes.username;
+  values.password = s.nodes.password;
+}
 
 /** Simulated modules: id prefix (several modules can run on one computer), default initial value and factory. */
 const MODULES: Record<string, { idPrefix: string; initial: number; create: (stateFile: string, initial: number) => NodeBehaviour }> = {

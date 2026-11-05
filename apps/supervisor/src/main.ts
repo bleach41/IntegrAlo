@@ -23,7 +23,12 @@ const { values } = parseArgs({
   },
 });
 
-const log = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`);
+/** Local time (HH:MM:SS), as in the core's own log lines. */
+const log = (line: string) => {
+  const now = new Date();
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+  console.log(`${time} ${line}`);
+};
 
 async function main(): Promise<void> {
   const dataDir = resolve(values['data-dir']);
