@@ -8,8 +8,9 @@
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "check:manifests": "node packages/contract/dist/cli/check-manifests.js modules",
+    "server": "pnpm --filter @integralo/server start",
     "sim-node": "pnpm --filter @integralo/sim-node start",
     "simulate": "pnpm --filter @integralo/sim-node simulate",
-    "e2e": "pnpm --filter @integralo/sim-node e2e"
+    "e2e": "pnpm -r --workspace-concurrency=1 --if-present e2e"
   }
 }

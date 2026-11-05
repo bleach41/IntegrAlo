@@ -1,0 +1,26 @@
+{
+  "name": "@integralo/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IntegrAlo core: node registry, telemetry, commands and audit",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --disable-warning=ExperimentalWarning dist/main.js",
+    "e2e": "node dist/e2e/run.js"
+  },
+  "dependencies": {
+    "@integralo/contract": "workspace:*",
+    "@nestjs/common": "10.4.15",
+    "@nestjs/core": "10.4.15",
+    "@nestjs/platform-express": "10.4.15",
+    "mqtt": "5.10.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.1",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "typescript": "5.6.3"
+  }
+}
