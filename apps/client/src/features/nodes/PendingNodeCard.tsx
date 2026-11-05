@@ -13,7 +13,7 @@ export function PendingNodeCard({ node, canApprove }: { node: NodeInfo; canAppro
   const approve = useApproveNode();
 
   return (
-    <Card className="mb-4 border-warning/50">
+    <Card className="h-full border-warning/50">
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
           <Text className="text-base font-semibold text-ink">{node.id}</Text>

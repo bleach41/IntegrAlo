@@ -10,16 +10,30 @@ import { useTheme } from '@/theme/ThemeProvider';
  * text-ink, …), so they follow the light/dark theme without conditional classes.
  */
 
-/** Full-screen container with the app background, safe areas and keyboard handling. */
-export function Screen({ children, centered = false }: { children: ReactNode; centered?: boolean }) {
+/**
+ * Full-screen container with the app background, safe areas and keyboard handling.
+ * `wide` lets content use large screens (dashboards); forms stay narrow and centered.
+ * Inside the tab area the bottom edge belongs to the tab bar.
+ */
+export function Screen({
+  children,
+  centered = false,
+  wide = false,
+  inTabs = false,
+}: {
+  children: ReactNode;
+  centered?: boolean;
+  wide?: boolean;
+  inTabs?: boolean;
+}) {
   return (
-    <SafeAreaView className="flex-1 bg-canvas">
+    <SafeAreaView className="flex-1 bg-canvas" edges={inTabs ? ['top', 'left', 'right'] : undefined}>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerClassName={`grow px-5 py-8 ${centered ? 'justify-center' : ''}`}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="w-full max-w-md self-center">{children}</View>
+          <View className={`w-full self-center ${wide ? 'max-w-6xl' : 'max-w-xl'}`}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -39,14 +53,14 @@ export function Title({ children, subtitle }: { children: ReactNode; subtitle?: 
   );
 }
 
-export function Brand() {
+export function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   return (
-    <View className="mb-8 items-center">
-      <Text className="text-4xl font-extrabold tracking-tight text-ink">
+    <View className={compact ? '' : 'mb-8 items-center'}>
+      <Text className={`font-extrabold tracking-tight text-ink ${compact ? 'text-2xl' : 'text-4xl'}`}>
         Integr<Text className="text-accent">Alo</Text>
       </Text>
-      <Text className="mt-1 text-sm text-muted">{t('brand.tagline')}</Text>
+      <Text className={`mt-1 text-muted ${compact ? 'text-xs' : 'text-sm'}`}>{t('brand.tagline')}</Text>
     </View>
   );
 }

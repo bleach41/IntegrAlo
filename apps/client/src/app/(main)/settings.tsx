@@ -1,13 +1,16 @@
 import { router } from 'expo-router';
+import { LogOut, Server, UserRound } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { HeaderButton } from '@/components/TopBar';
+import { TopBar } from '@/components/TopBar';
 import { Button, Card, Screen } from '@/components/ui';
 import { useSession } from '@/features/auth/session.store';
 import { PreferencesCard } from '@/features/preferences/PreferencesCard';
+import { useTheme } from '@/theme/ThemeProvider';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
+  const { colors } = useTheme();
   const user = useSession((s) => s.user);
   const serverUrl = useSession((s) => s.serverUrl);
   const logout = useSession((s) => s.logout);
@@ -22,20 +25,28 @@ export default function SettingsScreen() {
   const role = i18n.exists(roleKey) ? t(roleKey as 'roles.user') : (user?.roleId ?? '');
 
   return (
-    <Screen>
-      <View className="mb-6 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-ink">{t('settings.title')}</Text>
-        <HeaderButton onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>{t('common.back')}</HeaderButton>
-      </View>
+    <Screen inTabs>
+      <TopBar title={t('settings.title')} />
 
       <Card>
-        <Text className="mb-3 text-sm font-medium text-muted">{t('settings.account')}</Text>
-        <Text className="text-xl font-semibold text-ink">{t('home.greeting', { name: user?.username ?? '' })}</Text>
-        <View className="mt-2 self-start rounded-full bg-accent/15 px-3 py-1">
-          <Text className="text-xs font-semibold text-accent">{role}</Text>
+        <Text className="mb-4 text-sm font-medium uppercase tracking-wide text-muted">{t('settings.account')}</Text>
+        <View className="flex-row items-center">
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-accent/15">
+            <UserRound size={22} color={colors.accent} />
+          </View>
+          <View className="ml-3 flex-1">
+            <Text className="text-lg font-semibold text-ink">{user?.username}</Text>
+            <Text className="text-xs font-medium text-accent">{role}</Text>
+          </View>
         </View>
-        <Text className="mt-4 text-xs text-muted">{t('connect.current', { url: serverUrl ?? '' })}</Text>
-        <Button label={t('common.signOut')} onPress={signOut} variant="ghost" />
+        <View className="mt-4 flex-row items-center">
+          <Server size={14} color={colors.muted} />
+          <Text className="ml-2 text-xs text-muted">{t('connect.current', { url: serverUrl ?? '' })}</Text>
+        </View>
+        <View className="mt-2 flex-row items-center justify-center">
+          <LogOut size={16} color={colors.accent} />
+          <Button label={t('common.signOut')} onPress={signOut} variant="ghost" />
+        </View>
       </Card>
 
       <PreferencesCard />

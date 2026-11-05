@@ -3,11 +3,19 @@ import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { formatValue, variableLabel } from './format';
 
-/** Current values of a node, laid out from the module manifest. */
-export function VariablesGrid({ variables, sample }: { variables: VariableDef[]; sample: TelemetrySample }) {
+/** Current values of a node, laid out from the module manifest; `exclude` skips those already shown elsewhere. */
+export function VariablesGrid({
+  variables,
+  sample,
+  exclude = [],
+}: {
+  variables: VariableDef[];
+  sample: TelemetrySample;
+  exclude?: string[];
+}) {
   const { t, i18n } = useTranslation();
   const booleans = { yes: t('common.yes'), no: t('common.no') };
-  const main = variables.filter((v) => !v.simulated);
+  const main = variables.filter((v) => !v.simulated && !exclude.includes(v.key));
   const simulated = variables.filter((v) => v.simulated);
 
   return (

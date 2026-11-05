@@ -10,6 +10,21 @@ const en: typeof es = {
     no: 'No',
     retry: 'Retry',
   },
+  nav: {
+    home: 'Home',
+    alarms: 'Alarms',
+    settings: 'Settings',
+  },
+  temperature: {
+    cooling: 'Cooling',
+    idle: 'Idle',
+    off: 'Off',
+    setpoint: 'setpoint {{value}}',
+  },
+  alarmsScreen: {
+    title: 'Alarms',
+    subtitle: 'Open alarms of every node',
+  },
   realtime: {
     live: 'Live',
     connecting: 'Connecting…',

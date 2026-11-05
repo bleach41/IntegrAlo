@@ -1,5 +1,4 @@
 import { PERMISSIONS, hasPermission } from '@integralo/contract';
-import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useModules, useNodes, useOpenAlarms } from '@/api/queries';
@@ -10,7 +9,10 @@ import { NodeCard } from '@/features/nodes/NodeCard';
 import { PendingNodeCard } from '@/features/nodes/PendingNodeCard';
 import { useTheme } from '@/theme/ThemeProvider';
 
-/** Dashboard: nodes waiting for approval and approved nodes with live readings. */
+/** Grid cell: one column on phones, two on tablets, three on wide screens. */
+const CELL = 'w-full p-2 md:w-1/2 xl:w-1/3';
+
+/** Dashboard: nodes waiting for approval and approved nodes with live summaries. */
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -25,8 +27,8 @@ export default function DashboardScreen() {
   const alarmsOf = (nodeId: string) => alarms.data?.filter((a) => a.nodeId === nodeId && a.state !== 'closed').length ?? 0;
 
   return (
-    <Screen>
-      <TopBar title={t('dashboard.title')} action={{ label: t('dashboard.settings'), onPress: () => router.push('/settings') }} />
+    <Screen wide inTabs>
+      <TopBar title={t('dashboard.title')} />
 
       {nodes.isPending ? <ActivityIndicator color={colors.accent} className="mt-10" /> : null}
 
@@ -38,12 +40,16 @@ export default function DashboardScreen() {
       ) : null}
 
       {pending.length > 0 ? (
-        <View className="mb-2">
+        <View className="mb-6">
           <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-warning">{t('dashboard.pending')}</Text>
-          <Text className="mb-3 text-xs text-muted">{t('dashboard.pendingHint')}</Text>
-          {pending.map((node) => (
-            <PendingNodeCard key={node.id} node={node} canApprove={hasPermission(permissions, PERMISSIONS.nodesApprove)} />
-          ))}
+          <Text className="mb-1 text-xs text-muted">{t('dashboard.pendingHint')}</Text>
+          <View className="-mx-2 flex-row flex-wrap">
+            {pending.map((node) => (
+              <View key={node.id} className={CELL}>
+                <PendingNodeCard node={node} canApprove={hasPermission(permissions, PERMISSIONS.nodesApprove)} />
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -53,9 +59,13 @@ export default function DashboardScreen() {
         </Card>
       ) : null}
 
-      {approved.map((node) => (
-        <NodeCard key={node.id} node={node} manifest={manifestOf(node.module)} alarmCount={alarmsOf(node.id)} />
-      ))}
+      <View className="-mx-2 flex-row flex-wrap">
+        {approved.map((node) => (
+          <View key={node.id} className={CELL}>
+            <NodeCard node={node} manifest={manifestOf(node.module)} alarmCount={alarmsOf(node.id)} />
+          </View>
+        ))}
+      </View>
     </Screen>
   );
 }

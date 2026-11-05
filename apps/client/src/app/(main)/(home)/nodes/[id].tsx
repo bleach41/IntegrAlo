@@ -4,19 +4,22 @@ import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { useLatestTelemetry, useModules, useNodes } from '@/api/queries';
-import { HeaderButton } from '@/components/TopBar';
+import { BackButton } from '@/components/TopBar';
 import { Card, Screen } from '@/components/ui';
 import { NodeAlarms } from '@/features/alarms/NodeAlarms';
 import { useSession } from '@/features/auth/session.store';
 import { CommandForm } from '@/features/commands/CommandForm';
+import { GenericSummary } from '@/features/nodes/GenericSummary';
 import { NodeHeader } from '@/features/nodes/NodeCard';
 import { VariablesGrid } from '@/features/nodes/VariablesGrid';
 import { NodeTrends } from '@/features/telemetry/NodeTrends';
+import { moduleViews } from '@/modules/registry';
 
 /**
- * Detail of a node, entirely generated from its module manifest: current values, trend
- * charts, open alarms and the commands the user may send. Commands that change one
- * value are under "Control"; those that change several settings, under "Engineering".
+ * Detail of a node, entirely generated from its module manifest (plus the optional module
+ * summary view): current values, trend charts, open alarms and the commands the user may
+ * send. Commands that change one value are under "Control"; those that change several
+ * settings, under "Engineering". On wide screens monitoring and commands sit side by side.
  */
 export default function NodeDetailScreen() {
   const { t } = useTranslation();
@@ -30,9 +33,9 @@ export default function NodeDetailScreen() {
 
   if (!node) {
     return (
-      <Screen>
-        <HeaderButton onPress={back}>{t('common.back')}</HeaderButton>
-        <Text className="mt-6 text-sm text-muted">{t('detail.notFound')}</Text>
+      <Screen inTabs>
+        <BackButton label={t('common.back')} onPress={back} />
+        <Text className="mt-2 text-sm text-muted">{t('detail.notFound')}</Text>
       </Screen>
     );
   }
@@ -41,46 +44,62 @@ export default function NodeDetailScreen() {
   const control = allowed.filter((c) => !c.partial);
   const engineering = allowed.filter((c) => c.partial);
   const current = latest?.values ?? {};
+  const Summary = (manifest && moduleViews[manifest.id]?.Summary) ?? GenericSummary;
 
   return (
-    <Screen>
-      <View className="mb-4 self-start">
-        <HeaderButton onPress={back}>{t('common.back')}</HeaderButton>
-      </View>
+    <Screen wide inTabs>
+      <BackButton label={t('common.back')} onPress={back} />
 
-      <Card className="mb-4">
-        <NodeHeader node={node} />
-        <View className="mt-4">
-          {latest && manifest ? <VariablesGrid variables={manifest.variables} sample={latest} /> : <Text className="text-sm text-muted">{t('dashboard.noData')}</Text>}
+      <View className="lg:flex-row lg:items-start">
+        <View className="lg:mr-4 lg:flex-[3]">
+          <Card className="mb-4">
+            <NodeHeader node={node} />
+            {latest && manifest ? (
+              <>
+                <View className="my-4">
+                  <Summary manifest={manifest} sample={latest} />
+                </View>
+                <VariablesGrid
+                  variables={manifest.variables}
+                  sample={latest}
+                  exclude={manifest.summary ? [manifest.summary.primary, ...manifest.summary.secondary] : []}
+                />
+              </>
+            ) : (
+              <Text className="mt-4 text-sm text-muted">{t('dashboard.noData')}</Text>
+            )}
+          </Card>
+
+          <Section title={t('alarms.title')}>
+            <NodeAlarms nodeId={node.id} />
+          </Section>
+
+          {manifest ? (
+            <Section title={t('detail.trend')}>
+              <NodeTrends nodeId={node.id} manifest={manifest} />
+            </Section>
+          ) : null}
         </View>
-      </Card>
 
-      <Section title={t('alarms.title')}>
-        <NodeAlarms nodeId={node.id} manifest={manifest} />
-      </Section>
+        <View className="lg:flex-[2]">
+          {control.length > 0 ? (
+            <Section title={t('detail.control')}>
+              {!node.online ? <Text className="mb-3 text-xs text-warning">{t('commands.offline')}</Text> : null}
+              {control.map((command) => (
+                <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
+              ))}
+            </Section>
+          ) : null}
 
-      {manifest ? (
-        <Section title={t('detail.trend')}>
-          <NodeTrends nodeId={node.id} manifest={manifest} />
-        </Section>
-      ) : null}
-
-      {control.length > 0 ? (
-        <Section title={t('detail.control')}>
-          {!node.online ? <Text className="mb-3 text-xs text-warning">{t('commands.offline')}</Text> : null}
-          {control.map((command) => (
-            <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
-          ))}
-        </Section>
-      ) : null}
-
-      {engineering.length > 0 ? (
-        <Section title={t('detail.engineering')}>
-          {engineering.map((command) => (
-            <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
-          ))}
-        </Section>
-      ) : null}
+          {engineering.length > 0 ? (
+            <Section title={t('detail.engineering')}>
+              {engineering.map((command) => (
+                <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
+              ))}
+            </Section>
+          ) : null}
+        </View>
+      </View>
     </Screen>
   );
 }

@@ -8,6 +8,21 @@ const es = {
     no: 'No',
     retry: 'Reintentar',
   },
+  nav: {
+    home: 'Inicio',
+    alarms: 'Alarmas',
+    settings: 'Ajustes',
+  },
+  temperature: {
+    cooling: 'Enfriando',
+    idle: 'En espera',
+    off: 'Apagado',
+    setpoint: 'consigna {{value}}',
+  },
+  alarmsScreen: {
+    title: 'Alarmas',
+    subtitle: 'Alarmas abiertas de todos los nodos',
+  },
   realtime: {
     live: 'En vivo',
     connecting: 'Conectando…',
