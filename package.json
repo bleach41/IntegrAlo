@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.1.0",
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
     "check:manifests": "node packages/contract/dist/cli/check-manifests.js modules"
   }
 }

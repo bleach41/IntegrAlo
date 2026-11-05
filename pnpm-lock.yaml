@@ -8,7 +8,40 @@ importers:
 
   .: {}
 
-  modules/temperature: {}
+  apps/sim-node:
+    dependencies:
+      '@integralo/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
+      '@integralo/module-temperature':
+        specifier: workspace:*
+        version: link:../../modules/temperature
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/node':
+        specifier: 22.9.0
+        version: 22.9.0
+      typescript:
+        specifier: 5.6.3
+        version: 5.6.3
+
+  modules/temperature:
+    dependencies:
+      '@integralo/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/node':
+        specifier: 22.9.0
+        version: 22.9.0
+      typescript:
+        specifier: 5.6.3
+        version: 5.6.3
 
   packages/contract:
     dependencies:

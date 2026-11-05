@@ -14,8 +14,8 @@
     "setpointMax": { "type": "number", "unit": "°C", "default": 30 },
     "algorithm": { "type": "enum", "values": ["onoff", "pi"], "default": "onoff" },
     "hysteresis": { "type": "number", "unit": "°C", "min": 0.1, "max": 5, "default": 0.5 },
-    "kp": { "type": "number", "min": 0 },
-    "ki": { "type": "number", "min": 0 },
+    "kp": { "type": "number", "unit": "%/°C", "min": 0, "default": 20 },
+    "ki": { "type": "number", "unit": "%/(°C·s)", "min": 0, "default": 0.02 },
     "samplePeriodMs": { "type": "number", "unit": "ms", "min": 500, "max": 60000, "default": 2000 }
   },
   "alarms": [

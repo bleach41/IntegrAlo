@@ -1,0 +1,21 @@
+{
+  "name": "@integralo/sim-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simulated temperature node: same contract as the ESP32 firmware",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"dist/**/*.test.js\"",
+    "simulate": "node dist/tools/simulate.js"
+  },
+  "dependencies": {
+    "@integralo/contract": "workspace:*",
+    "@integralo/module-temperature": "workspace:*",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "typescript": "5.6.3"
+  }
+}

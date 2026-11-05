@@ -3,5 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "description": "Temperature module for a room with air conditioning",
-  "main": "manifest.json"
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@integralo/contract": "workspace:*",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "typescript": "5.6.3"
+  }
 }
