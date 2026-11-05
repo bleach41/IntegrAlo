@@ -14,6 +14,8 @@ export interface AppConfig {
   retentionDays: number;
   /** An online node without telemetry for this long raises the communication alarm. */
   telemetryTimeoutMs: number;
+  /** Exported web client served at "/" (all-in-one installation); none in development. */
+  webDir?: string;
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -30,5 +32,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ackTimeoutMs: Number(env.INTEGRALO_ACK_TIMEOUT_MS ?? PROTOCOL_DEFAULTS.ackTimeoutMs),
     retentionDays: Number(env.INTEGRALO_RETENTION_DAYS ?? 60),
     telemetryTimeoutMs: Number(env.INTEGRALO_TELEMETRY_TIMEOUT_MS ?? 30_000),
+    webDir: env.INTEGRALO_WEB_DIR,
   };
 }
