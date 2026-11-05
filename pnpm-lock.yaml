@@ -158,6 +158,24 @@ importers:
         specifier: 5.6.3
         version: 5.6.3
 
+  apps/supervisor:
+    dependencies:
+      '@integralo/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
+    devDependencies:
+      '@types/node':
+        specifier: 22.9.0
+        version: 22.9.0
+      mqtt:
+        specifier: 5.10.1
+        version: 5.10.1
+      typescript:
+        specifier: 5.6.3
+        version: 5.6.3
+
+  modules/tank-level: {}
+
   modules/temperature:
     dependencies:
       '@integralo/contract':

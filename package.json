@@ -8,6 +8,7 @@
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "check:manifests": "node packages/contract/dist/cli/check-manifests.js modules",
+    "start": "pnpm --filter @integralo/supervisor start",
     "server": "pnpm --filter @integralo/server start",
     "client": "pnpm --filter @integralo/client start",
     "sim-node": "pnpm --filter @integralo/sim-node start",

@@ -8,6 +8,7 @@ dist/
 *.sqlite-shm
 .expo/
 .state/
+.data/
 *.csv
 .vscode/
 .DS_Store

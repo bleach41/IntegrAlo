@@ -1,0 +1,21 @@
+{
+  "name": "@integralo/supervisor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "All-in-one launcher: configures and supervises the MQTT broker and the IntegrAlo core",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "test": "node --test \"dist/**/*.test.js\"",
+    "e2e": "node dist/e2e/run.js"
+  },
+  "dependencies": {
+    "@integralo/contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "mqtt": "5.10.1",
+    "typescript": "5.6.3"
+  }
+}
