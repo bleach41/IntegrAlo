@@ -1,3 +1,7 @@
+// Hermes (the JavaScript engine of the app on phones) has no Intl.PluralRules, which
+// i18next needs to choose "1 alarma" / "2 alarmas". The polyfill only fills it in when it
+// is missing, so browsers keep their own implementation.
+import 'intl-pluralrules';
 import { getLocales } from 'expo-localization';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';

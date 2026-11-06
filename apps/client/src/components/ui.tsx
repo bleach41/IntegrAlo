@@ -40,7 +40,9 @@ export function Screen({
   const bottom = inTabs && !wideScreen ? FLOATING_NAV_SPACE + Math.max(insets.bottom, 12) : undefined;
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={inTabs ? ['top', 'left', 'right'] : undefined}>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* "padding" on Android too: with edge-to-edge (Expo SDK 58) the system no longer
+          resizes the window for the keyboard, so the field being typed would stay hidden. */}
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'web' ? undefined : 'padding'}>
         <ScrollView
           contentContainerClassName={`grow px-5 py-8 ${centered ? 'justify-center' : ''}`}
           contentContainerStyle={bottom !== undefined ? { paddingBottom: bottom } : undefined}

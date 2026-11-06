@@ -13,6 +13,7 @@
     "expo-secure-store": "~58.0.2",
     "expo-status-bar": "~58.0.4",
     "i18next": "23.16.8",
+    "intl-pluralrules": "2.0.1",
     "lucide-react-native": "0.460.0",
     "nativewind": "4.2.7",
     "react": "19.3.0",

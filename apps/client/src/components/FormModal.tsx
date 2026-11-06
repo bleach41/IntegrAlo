@@ -31,7 +31,7 @@ export function FormModal({
     <Modal visible={visible} transparent animationType={wide ? 'fade' : 'slide'} onRequestClose={onClose}>
       {/* The modal is drawn in its own layer: the theme colors must be set again here. */}
       <ThemeScope>
-        <KeyboardAvoidingView className={`flex-1 ${wide ? 'items-center justify-center' : 'justify-end'}`} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView className={`flex-1 ${wide ? 'items-center justify-center' : 'justify-end'}`} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
           <Pressable accessibilityLabel="close" onPress={onClose} className="absolute inset-0 bg-black/60" />
           <View
             className={`w-full border border-line bg-surface ${wide ? 'max-w-lg rounded-2xl' : 'rounded-t-3xl'}`}

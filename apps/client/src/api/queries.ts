@@ -203,10 +203,11 @@ export function useAuditLog(category: AuditCategory | undefined) {
     queryKey: ['audit', category ?? 'all'],
     initialPageParam: undefined as number | undefined,
     queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({ limit: String(AUDIT_PAGE) });
-      if (category) params.set('category', category);
-      if (pageParam !== undefined) params.set('beforeId', String(pageParam));
-      return api<AuditEvent[]>('GET', `/events?${params}`);
+      // Built by hand: URLSearchParams on phones (React Native) does not implement set().
+      const params = [`limit=${AUDIT_PAGE}`];
+      if (category) params.push(`category=${encodeURIComponent(category)}`);
+      if (pageParam !== undefined) params.push(`beforeId=${pageParam}`);
+      return api<AuditEvent[]>('GET', `/events?${params.join('&')}`);
     },
     getNextPageParam: (page) => (page.length === AUDIT_PAGE ? page[page.length - 1].id : undefined),
     refetchInterval: 15_000,

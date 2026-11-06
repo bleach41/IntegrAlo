@@ -13,14 +13,15 @@ const TIMEOUT_MS = 8000;
 
 /**
  * Turns what the user typed into a base URL: adds http:// and the default port when
- * missing and removes trailing slashes. "192.168.1.10" → "http://192.168.1.10:4100".
+ * missing and drops any path. "192.168.1.10" → "http://192.168.1.10:4100".
+ * Parsed by hand on purpose: the URL class of React Native on phones does not implement
+ * changing a URL's parts, and failed here although the same code worked in the browser.
  */
 export function normalizeServerUrl(input: string): string {
-  let text = input.trim().replace(/\/+$/, '');
-  if (!/^https?:\/\//i.test(text)) text = `http://${text}`;
-  const url = new URL(text);
-  if (!url.port) url.port = String(DEFAULT_PORT);
-  return `${url.protocol}//${url.host}`;
+  const match = /^(?:(https?):\/\/)?([^/:\s]+)(?::(\d{1,5}))?(?:\/.*)?$/i.exec(input.trim());
+  if (!match) throw new ApiError(0, 'invalid address');
+  const [, protocol = 'http', host, port = String(DEFAULT_PORT)] = match;
+  return `${protocol.toLowerCase()}://${host}:${port}`;
 }
 
 export async function apiRequest<T>(
