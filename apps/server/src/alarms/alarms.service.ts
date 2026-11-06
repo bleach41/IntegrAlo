@@ -152,7 +152,8 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
 
   private onNode(node: NodeInfo): void {
     if (node.approval !== 'approved') {
-      if (node.retiredAt !== null) this.closeAll(node.id);
+      // Retired or disconnected: no longer supervised, so nothing of it stays open.
+      this.closeAll(node.id);
       return;
     }
     this.ensureConfigs(node);
@@ -261,7 +262,7 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
       .get(nodeId, key) as AlarmRow | undefined;
   }
 
-  /** A retired node is no longer supervised: its open occurrences are closed by "system". */
+  /** A node no longer supervised (retired or disconnected): its open occurrences are closed by "system". */
   private closeAll(nodeId: string): void {
     const now = Date.now();
     const open = this.database.db

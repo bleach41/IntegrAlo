@@ -84,13 +84,22 @@ export class NodesService {
   }
 
   /**
-   * Takes a node out of the list without deleting anything: telemetry, commands and the
-   * audit log keep its history. It goes back to pending, so it stops being supervised (no
-   * telemetry stored, no alarms) and, if it ever reconnects, it shows up for approval again.
+   * Stops supervising a node without deleting anything: telemetry, commands and the audit
+   * log keep its history. It goes back to pending, so no telemetry is stored, no alarm is
+   * evaluated and no command is accepted until it is approved again.
+   * - Offline (a replaced board): it also leaves the list, and reappears only if it reconnects.
+   * - Online ("disconnect" in the app): it stays in the list as pending, so an unknown or
+   *   unwanted device can be cut off at once and, if it was a mistake, approved again.
    */
   retire(id: string, actor: string): void {
     const node = this.get(id);
-    if (node.online) throw new ConflictException(`node ${id} is online; only offline nodes can be retired`);
+    if (node.online) {
+      if (node.approval !== 'approved') throw new ConflictException(`node ${id} is not approved`);
+      this.database.db.prepare("UPDATE nodes SET approval = 'pending', approved_at = NULL WHERE id = ?").run(id);
+      this.events.record('node.revoked', id, actor, { name: node.name });
+      this.bus.emit('node', this.get(id));
+      return;
+    }
     this.database.db.prepare("UPDATE nodes SET approval = 'pending', approved_at = NULL, retired_at = ? WHERE id = ?").run(Date.now(), id);
     this.events.record('node.retired', id, actor, { name: node.name });
     this.bus.emit('node', this.get(id));

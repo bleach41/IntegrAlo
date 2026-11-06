@@ -295,6 +295,14 @@ async function main(): Promise<void> {
     }, 5000);
     check('retired node reappears as pending when it reconnects', !!returned);
 
+    // Disconnecting an online node: it loses its approval at once but stays listed as pending
+    const revoked = await http('POST', `/nodes/${SIM_ID}/retire`, {});
+    const simAfter = (await http('GET', `/nodes/${SIM_ID}`)).data;
+    check('online node disconnected: back to pending, still listed', revoked.status === 204 && simAfter.approval === 'pending' && simAfter.retiredAt === null);
+    const toRevoked = await http('POST', `/nodes/${SIM_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } });
+    check('commands to a disconnected node are refused', toRevoked.status >= 400 && toRevoked.status < 500, `HTTP ${toRevoked.status}`);
+    await http('POST', `/nodes/${SIM_ID}/approve`, { name: 'Habitación 1' });
+
     // P4 (partial): connection status
     const killed = Date.now();
     sim.kill('SIGKILL');
