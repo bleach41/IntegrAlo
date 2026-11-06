@@ -52,7 +52,7 @@ Genera el paquete y `release/IntegrAlo-Setup-<versión>.exe`. El instalador, eje
 - registra e inicia el servicio `IntegrAlo`, de inicio automático;
 - deja en el menú Inicio, carpeta IntegrAlo, tres accesos: «Panel del servidor IntegrAlo», «Iniciar servidor IntegrAlo» (inicia el servicio si está detenido y abre el panel) y «Detener servidor IntegrAlo» (parada ordenada). Iniciar y detener piden permiso de administrador solo para ese paso. Opcionalmente (marcado por defecto) crea los dos últimos también en el escritorio.
 
-Los iconos son propios y se generan con `python scripts/make-icons.py` (requiere Pillow) en `installer/icons`.
+Los iconos son propios, en el verde de la app, y se generan con `python scripts/make-icons.py` (requiere Pillow): los del instalador en `installer/icons` y los de la app (móvil y web) en `apps/client/assets`.
 
 Al desinstalar se conservan los datos, salvo que se pida borrarlos.
 
