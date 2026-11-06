@@ -33,3 +33,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 }
 
 export const useTheme = () => useContext(ThemeContext);
+
+/**
+ * Sets the color variables again for content rendered outside the main tree (a Modal is
+ * drawn in its own layer, where the root variables do not reach): without it, every
+ * themed class there would have no color.
+ */
+export function ThemeScope({ children }: { children: ReactNode }) {
+  const { scheme } = useTheme();
+  return <View style={[{ flex: 1 }, variables[scheme]]}>{children}</View>;
+}

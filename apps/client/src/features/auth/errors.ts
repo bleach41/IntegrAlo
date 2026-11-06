@@ -13,7 +13,9 @@ export type MessageKey =
   | 'setup.alreadyDone'
   | 'setup.invalidUsername'
   | 'setup.tooShort'
-  | 'setup.mismatch';
+  | 'setup.mismatch'
+  | 'users.exists'
+  | 'users.failed';
 
 export interface Message {
   key: MessageKey;

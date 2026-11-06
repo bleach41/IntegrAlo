@@ -148,12 +148,15 @@ export function SmallButton({
   onPress,
   busy = false,
   disabled = false,
+  primary = false,
   icon,
 }: {
   label: string;
   onPress: () => void;
   busy?: boolean;
   disabled?: boolean;
+  /** Filled: the main action of a form (save, create); the others stay soft. */
+  primary?: boolean;
   icon?: ReactNode;
 }) {
   const { colors } = useTheme();
@@ -163,10 +166,10 @@ export function SmallButton({
       disabled={busy || disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled, busy }}
-      className={`h-9 flex-row items-center justify-center self-start rounded-full bg-accent/15 px-3.5 active:bg-accent/25 ${busy ? 'opacity-60' : disabled ? 'opacity-40' : ''}`}
+      className={`h-9 flex-row items-center justify-center self-start rounded-full px-3.5 ${primary ? 'bg-accent-strong active:opacity-80' : 'bg-accent/15 active:bg-accent/25'} ${busy ? 'opacity-60' : disabled ? 'opacity-40' : ''}`}
     >
-      {busy ? <ActivityIndicator size="small" color={colors.accent} /> : icon}
-      <Text className="ml-1.5 text-sm font-semibold text-accent">{label}</Text>
+      {busy ? <ActivityIndicator size="small" color={primary ? colors['on-accent'] : colors.accent} /> : icon}
+      <Text className={`text-sm font-semibold ${icon || busy ? 'ml-1.5' : ''} ${primary ? 'text-on-accent' : 'text-accent'}`}>{label}</Text>
     </Pressable>
   );
 }
