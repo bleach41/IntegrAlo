@@ -3,6 +3,20 @@
  * from elsewhere), with the colors of the app. It asks /status every 2 s; log lines and
  * every other value are inserted as text, never as HTML.
  */
+
+/**
+ * The IntegrAlo logo as SVG, with the same geometry and green as the icons drawn by
+ * scripts/make-icons.py (a central node linked to three nodes, on a rounded green square).
+ * Used in the header and, as a data: URL, as the tab icon (allowed by the panel's CSP).
+ */
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="IntegrAlo">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#047857"/></linearGradient></defs>
+<rect x="4" y="4" width="92" height="92" rx="20" fill="url(#g)"/>
+<g stroke="#fff" stroke-width="4.5"><line x1="50" y1="53" x2="50" y2="26"/><line x1="50" y1="53" x2="73.4" y2="66.5"/><line x1="50" y1="53" x2="26.6" y2="66.5"/></g>
+<g fill="#fff"><circle cx="50" cy="53" r="11.5"/><circle cx="50" cy="26" r="7.5"/><circle cx="73.4" cy="66.5" r="7.5"/><circle cx="26.6" cy="66.5" r="7.5"/></g>
+<circle cx="50" cy="53" r="5.2" fill="#0a966b"/>
+</svg>`;
+
 export function panelPage(): string {
   return `<!doctype html>
 <html lang="es">
@@ -10,6 +24,7 @@ export function panelPage(): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IntegrAlo · Servidor</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(LOGO_SVG)}">
 <style>
 :root { --canvas:#0a110e; --surface:#111c17; --line:#1f3029; --ink:#e7f2ec; --muted:#8aa398; --accent:#34d399; --accent-strong:#10b981; --on-accent:#04120c; --danger:#f87171; --warning:#fbbf24; }
 @media (prefers-color-scheme: light) { :root { --canvas:#f4f8f6; --surface:#ffffff; --line:#d7e3dd; --ink:#0f1d17; --muted:#5b7067; --accent:#059669; --accent-strong:#047857; --on-accent:#ffffff; --danger:#dc2626; --warning:#d97706; } }
@@ -18,6 +33,7 @@ body { margin:0; background:var(--canvas); color:var(--ink); font:15px/1.5 syste
 main { max-width:1100px; margin:0 auto; padding:28px 20px 40px; }
 header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap; }
 h1 { margin:0; font-size:28px; letter-spacing:-.5px; } h1 span { color:var(--accent); }
+.brand { display:flex; align-items:center; gap:14px; } .brand .logo { width:48px; height:48px; flex:none; } .brand .logo svg { width:100%; height:100%; display:block; }
 .sub { color:var(--muted); font-size:13px; }
 .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; }
 .card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 20px; }
@@ -47,9 +63,12 @@ pre { margin:0; max-height:320px; overflow:auto; font:12px/1.55 ui-monospace, Co
 <body>
 <main>
   <header>
-    <div>
-      <h1>Integr<span>Alo</span> · Servidor</h1>
-      <div class="sub" id="identity">Conectando con el supervisor…</div>
+    <div class="brand">
+      <div class="logo">${LOGO_SVG}</div>
+      <div>
+        <h1>Integr<span>Alo</span> · Servidor</h1>
+        <div class="sub" id="identity">Conectando con el supervisor…</div>
+      </div>
     </div>
     <div class="sub" id="uptime"></div>
   </header>
