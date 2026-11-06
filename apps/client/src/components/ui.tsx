@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, TextInputProps, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FLOATING_NAV_SPACE, useIsWide } from './layout';
+import { Logo } from './Logo';
 import type { Message } from '@/features/auth/errors';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -73,14 +74,31 @@ export function Title({ children, subtitle }: { children: ReactNode; subtitle?: 
   );
 }
 
+/** Logo and name: logo above the name on the sign-in screens, beside it in the navigation. */
 export function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
-  return (
-    <View className={compact ? '' : 'mb-8 items-center'}>
+  const name = (
+    <View className={compact ? '' : 'items-center'}>
       <Text className={`font-extrabold tracking-tight text-ink ${compact ? 'text-2xl' : 'text-4xl'}`}>
         Integr<Text className="text-accent">Alo</Text>
       </Text>
       <Text className={`mt-1 text-muted ${compact ? 'text-xs' : 'text-sm'}`}>{t('brand.tagline')}</Text>
+    </View>
+  );
+  if (compact) {
+    return (
+      <View className="flex-row items-center gap-3">
+        <Logo size={40} />
+        {name}
+      </View>
+    );
+  }
+  return (
+    <View className="mb-8 items-center">
+      <View className="mb-3">
+        <Logo size={72} />
+      </View>
+      {name}
     </View>
   );
 }
