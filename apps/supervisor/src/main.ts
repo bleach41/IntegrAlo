@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { findMosquittoDir, prepareBroker } from './broker';
 import { isPortFree, lanAddresses, waitForPort } from './net';
+import { printPairingWhenReady } from './pairing';
 import { ManagedProcess } from './process';
 import { loadOrCreateSettings } from './settings';
 
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
   }
   core.start();
   printWelcome(settings.httpPort, settings.brokerPort, settings.nodes);
+  void printPairingWhenReady(settings.httpPort, lanAddresses(), log);
 
   let stopping = false;
   const shutdown = async () => {

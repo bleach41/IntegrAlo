@@ -11,7 +11,8 @@
     "e2e": "node dist/e2e/run.js"
   },
   "dependencies": {
-    "@integralo/contract": "workspace:*"
+    "@integralo/contract": "workspace:*",
+    "qrcode-generator": "1.4.4"
   },
   "devDependencies": {
     "@types/node": "22.9.0",
