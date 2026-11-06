@@ -34,6 +34,26 @@ export class ManagedProcess {
     return this.child?.pid;
   }
 
+  /** For the server panel: running, waiting to be restarted after a failure, or stopped. */
+  get state(): 'running' | 'restarting' | 'stopped' {
+    if (this.restartTimer) return 'restarting';
+    const child = this.child;
+    return child && child.exitCode === null && child.signalCode === null ? 'running' : 'stopped';
+  }
+
+  /** Milliseconds since the current run started (0 when not running). */
+  get uptimeMs(): number {
+    return this.state === 'running' ? Date.now() - this.startedAt : 0;
+  }
+
+  /** Orderly stop and start again (from the server panel); not counted as a failure. */
+  async restart(): Promise<void> {
+    await this.stop();
+    this.stopping = false;
+    this.backoffMs = MIN_BACKOFF_MS;
+    this.start();
+  }
+
   start(): void {
     const { name, command, args, env, ipcShutdown, log } = this.options;
     this.startedAt = Date.now();
@@ -57,6 +77,7 @@ export class ManagedProcess {
   async stop(): Promise<void> {
     this.stopping = true;
     clearTimeout(this.restartTimer);
+    this.restartTimer = undefined;
     const child = this.child;
     if (!child || child.exitCode !== null || child.signalCode !== null) return;
     const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
@@ -76,6 +97,7 @@ export class ManagedProcess {
     if (Date.now() - this.startedAt >= HEALTHY_AFTER_MS) this.backoffMs = MIN_BACKOFF_MS;
     log(`[supervisor] ${name} exited (${signal ?? `code ${code}`}); restarting in ${this.backoffMs / 1000} s`);
     this.restartTimer = setTimeout(() => {
+      this.restartTimer = undefined;
       this.restarts++;
       this.start();
     }, this.backoffMs);

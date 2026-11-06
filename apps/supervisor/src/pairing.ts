@@ -6,7 +6,13 @@ import qrcode from 'qrcode-generator';
  * scans what the computer shows). Waits for the core to answer, takes its public identity
  * from /api/health (nothing secret) and prints the code with its addresses.
  */
-export async function printPairingWhenReady(httpPort: number, hosts: string[], log: (line: string) => void): Promise<void> {
+export async function printPairingWhenReady(
+  httpPort: number,
+  hosts: string[],
+  log: (line: string) => void,
+  /** For the QR drawing itself: the console only (in the panel's log it would be noise). */
+  print: (line: string) => void = log,
+): Promise<void> {
   const health = await waitForHealth(httpPort, 60_000);
   if (!health) {
     log('[supervisor] the pairing code could not be shown: the core did not answer');
@@ -14,7 +20,7 @@ export async function printPairingWhenReady(httpPort: number, hosts: string[], l
   }
   const payload = buildPairingPayload({ name: health.name, publicKey: health.publicKey, addresses: hosts.map((h) => `${h}:${httpPort}`) });
   log('[supervisor] Pair a phone: in the IntegrAlo app, "Scan QR code"');
-  for (const line of renderQr(payload)) log(`  ${line}`);
+  for (const line of renderQr(payload)) print(`  ${line}`);
   log(`[supervisor]   Server ${health.name} · id ${health.serverId}`);
 }
 

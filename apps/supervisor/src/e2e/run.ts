@@ -1,5 +1,6 @@
 import { ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { nodeTopic } from '@integralo/contract';
@@ -15,6 +16,8 @@ import type { Settings } from '../settings';
 const BROKER_PORT = 1884;
 const HTTP_PORT = 4102;
 const API = `http://127.0.0.1:${HTTP_PORT}/api`;
+const PANEL_PORT = 4103;
+const PANEL = `http://127.0.0.1:${PANEL_PORT}`;
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = ''): void {
@@ -60,7 +63,7 @@ async function main(): Promise<void> {
   const dataDir = mkdtempSync(join(tmpdir(), 'integralo-supervisor-e2e-'));
   const supervisor: ChildProcess = spawn(
     process.execPath,
-    [join(__dirname, '..', 'main.js'), '--data-dir', dataDir, '--broker-port', String(BROKER_PORT), '--http-port', String(HTTP_PORT)],
+    [join(__dirname, '..', 'main.js'), '--data-dir', dataDir, '--broker-port', String(BROKER_PORT), '--http-port', String(HTTP_PORT), '--panel-port', String(PANEL_PORT)],
     { stdio: process.env.E2E_VERBOSE ? ['ignore', 'inherit', 'inherit', 'ipc'] : ['ignore', 'ignore', 'ignore', 'ipc'] },
   );
   const exited = new Promise<number | null>((resolve) => supervisor.once('exit', (code) => resolve(code)));
@@ -132,11 +135,39 @@ async function main(): Promise<void> {
     const back = await until(async () => (await health()).broker === 'connected', 20_000);
     check('core restarted by the supervisor after a crash', !!pid && !!down && !!back);
 
+    // Server panel: only on 127.0.0.1, data only for its own page, restart without counting a failure
+    const panelPage = await fetch(PANEL).then((r) => r.text()).catch(() => '');
+    check('server panel served on 127.0.0.1', panelPage.includes('IntegrAlo · Servidor') || panelPage.includes('Integr<span>Alo</span> · Servidor'));
+    const asPanel = { headers: { 'x-integralo-panel': '1' } };
+    check('panel data refused without the panel header', (await fetch(`${PANEL}/status`)).status === 403);
+    // fetch() cannot change Host (forbidden header): node:http can, as a rebinding page would.
+    const rebinding = await new Promise<number>((resolve) => {
+      const req = request({ host: '127.0.0.1', port: PANEL_PORT, path: '/status', headers: { ...asPanel.headers, host: 'evil.example:4103' } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      });
+      req.on('error', () => resolve(0));
+      req.end();
+    });
+    check('panel refuses requests addressed to another host name (DNS rebinding)', rebinding === 421, `HTTP ${rebinding}`);
+    const panelStatus = await fetch(`${PANEL}/status`, asPanel).then((r) => r.json() as Promise<any>);
+    check('panel shows broker and core running, linked, with the pairing QR',
+      panelStatus.broker.state === 'running' && panelStatus.core.state === 'running' && panelStatus.core.health?.broker === 'connected' && String(panelStatus.qrSvg).startsWith('<svg'));
+    const restartsBefore = panelStatus.core.restarts;
+    const pidBefore = listeningPid(HTTP_PORT);
+    const restart = await fetch(`${PANEL}/core/restart`, { method: 'POST', ...asPanel });
+    const restarted = await until(async () => {
+      const pidNow = listeningPid(HTTP_PORT);
+      return pidNow !== null && pidNow !== pidBefore && (await health()).broker === 'connected';
+    }, 20_000);
+    const after = await fetch(`${PANEL}/status`, asPanel).then((r) => r.json() as Promise<any>);
+    check('core restarted from the panel (not counted as a failure)', restart.status === 202 && !!restarted && after.core.restarts === restartsBefore);
+
     supervisor.send({ type: 'shutdown' });
     const code = await Promise.race([exited, sleep(15_000).then(() => 'timeout' as const)]);
     await sleep(500);
     check('orderly stop ends the supervisor and frees both ports',
-      code === 0 && listeningPid(HTTP_PORT) === null && listeningPid(BROKER_PORT) === null, `exit ${code}`);
+      code === 0 && listeningPid(HTTP_PORT) === null && listeningPid(BROKER_PORT) === null && listeningPid(PANEL_PORT) === null, `exit ${code}`);
   } finally {
     if (supervisor.exitCode === null) supervisor.kill();
     for (const port of [HTTP_PORT, BROKER_PORT]) {
