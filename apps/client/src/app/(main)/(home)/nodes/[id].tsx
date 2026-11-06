@@ -1,4 +1,4 @@
-import { commandPermission, hasPermission } from '@integralo/contract';
+import { PERMISSIONS, commandPermission, hasPermission } from '@integralo/contract';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { Text, View } from 'react-native';
 import { useLatestTelemetry, useModules, useNodes } from '@/api/queries';
 import { BackButton } from '@/components/TopBar';
 import { Card, Screen } from '@/components/ui';
+import { AlarmConfigCard } from '@/features/alarms/AlarmConfigCard';
 import { NodeAlarms } from '@/features/alarms/NodeAlarms';
 import { useSession } from '@/features/auth/session.store';
 import { CommandForm } from '@/features/commands/CommandForm';
@@ -110,6 +111,12 @@ export default function NodeDetailScreen() {
               {engineering.map((command) => (
                 <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
               ))}
+            </Section>
+          ) : null}
+
+          {manifest && hasPermission(permissions, PERMISSIONS.alarmsConfigure) ? (
+            <Section title={t('alarmConfig.title')}>
+              <AlarmConfigCard nodeId={node.id} manifest={manifest} />
             </Section>
           ) : null}
         </View>

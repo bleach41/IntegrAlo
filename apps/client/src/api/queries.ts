@@ -1,4 +1,4 @@
-import type { AlarmRecord, CommandRecord, ModuleManifest, NodeInfo, TelemetrySample } from '@integralo/contract';
+import type { AlarmRecord, CommandRecord, ModuleManifest, NodeAccess, NodeInfo, TelemetrySample } from '@integralo/contract';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useSession } from '@/features/auth/session.store';
@@ -132,6 +132,63 @@ export function useAlarmConfigs(nodeId: string) {
     queryKey: ['alarm-configs', nodeId],
     queryFn: () => api<AlarmConfig[]>('GET', `/nodes/${nodeId}/alarm-configs`),
   });
+}
+
+export function useSaveAlarmConfig(nodeId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, changes }: { key: string; changes: Partial<Pick<AlarmConfig, 'threshold' | 'deadband' | 'delayS' | 'enabled'>> }) =>
+      api<AlarmConfig>('PUT', `/nodes/${nodeId}/alarm-configs/${key}`, changes),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alarm-configs', nodeId] }),
+  });
+}
+
+export interface UserInfo {
+  id: number;
+  username: string;
+  roleId: string;
+  disabled: boolean;
+  createdAt: number;
+}
+
+export function useUsers(enabled: boolean) {
+  const api = useApi();
+  return useQuery({ queryKey: ['users'], enabled, queryFn: () => api<UserInfo[]>('GET', '/users') });
+}
+
+export function useRoles(enabled: boolean) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ['roles'],
+    enabled,
+    queryFn: () => api<Array<{ id: string; name: string; permissions: string[] }>>('GET', '/roles'),
+  });
+}
+
+export function useCreateUser() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { username: string; password: string; roleId: string }) => api<UserInfo>('POST', '/users', body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+export function useUpdateUser() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: number; changes: { roleId?: string; disabled?: boolean; password?: string } }) =>
+      api<UserInfo>('PATCH', `/users/${id}`, changes),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+/** Fetched on demand only (each read is audited by the core). */
+export function useNodeAccess() {
+  const api = useApi();
+  return useMutation({ mutationFn: () => api<NodeAccess>('GET', '/system/node-access') });
 }
 
 export function useApproveNode() {
