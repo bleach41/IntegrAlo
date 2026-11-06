@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -55,20 +55,34 @@ if (!selected) {
   process.exit(1);
 }
 
-/** Like the ESP32, the identity derives from a MAC address: prefix + its last 6 hex digits. */
-function defaultNodeId(prefix: string): string {
-  for (const addresses of Object.values(networkInterfaces())) {
+/**
+ * Like the ESP32, the identity derives from a MAC address: prefix + its last 6 hex digits.
+ * An ESP32 has one fixed MAC; a PC has several adapters whose order changes (Wi-Fi off,
+ * a VPN, a USB adapter), so the first identity is kept in the state folder and reused:
+ * otherwise the same simulator would show up as a new node after a network change.
+ */
+function defaultNodeId(prefix: string, stateDir: string): string {
+  const file = join(stateDir, `${prefix}.identity`);
+  if (existsSync(file)) {
+    const saved = readFileSync(file, 'utf8').trim();
+    if (saved) return saved;
+  }
+  let id = `${prefix}-000001`;
+  search: for (const addresses of Object.values(networkInterfaces())) {
     for (const a of addresses ?? []) {
       if (!a.internal && a.mac && a.mac !== '00:00:00:00:00:00') {
-        return `${prefix}-${a.mac.replace(/:/g, '').slice(-6).toLowerCase()}`;
+        id = `${prefix}-${a.mac.replace(/:/g, '').slice(-6).toLowerCase()}`;
+        break search;
       }
     }
   }
-  return `${prefix}-000001`;
+  writeFileSync(file, `${id}
+`);
+  return id;
 }
 
-const nodeId = values['node-id'] ?? defaultNodeId(selected.idPrefix);
 mkdirSync(values['state-dir'], { recursive: true });
+const nodeId = values['node-id'] ?? defaultNodeId(selected.idPrefix, values['state-dir']);
 
 const node = new SimulatedNode({
   brokerUrl: values.broker,
