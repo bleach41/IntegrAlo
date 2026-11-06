@@ -61,7 +61,12 @@ export function prepareBroker(settings: Settings, brokerDir: string, mosquittoDi
   return configFile;
 }
 
-/** Mosquitto install folder: INTEGRALO_MOSQUITTO_DIR, or the default Windows location. */
-export function findMosquittoDir(env: NodeJS.ProcessEnv = process.env): string {
-  return env.INTEGRALO_MOSQUITTO_DIR ?? 'C:/Program Files/mosquitto';
+/**
+ * Mosquitto folder: INTEGRALO_MOSQUITTO_DIR if set; else the copy bundled with an installed
+ * IntegrAlo (<root>/mosquitto); else, during development, the default Windows install.
+ */
+export function findMosquittoDir(root: string, env: NodeJS.ProcessEnv = process.env): string {
+  if (env.INTEGRALO_MOSQUITTO_DIR) return env.INTEGRALO_MOSQUITTO_DIR;
+  const bundled = join(root, 'mosquitto');
+  return existsSync(join(bundled, 'mosquitto.exe')) ? bundled : 'C:/Program Files/mosquitto';
 }

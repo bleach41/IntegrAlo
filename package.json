@@ -13,6 +13,7 @@
     "client": "pnpm --filter @integralo/client start",
     "sim-node": "pnpm --filter @integralo/sim-node start",
     "simulate": "pnpm --filter @integralo/sim-node simulate",
-    "e2e": "pnpm -r --workspace-concurrency=1 --if-present e2e"
+    "e2e": "pnpm -r --workspace-concurrency=1 --if-present e2e",
+    "package": "node scripts/package.mjs"
   }
 }

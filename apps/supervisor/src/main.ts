@@ -63,7 +63,8 @@ async function main(): Promise<void> {
     }
   }
 
-  const mosquittoDir = findMosquittoDir();
+  const mosquittoDir = findMosquittoDir(ROOT);
+  log(`[supervisor] MQTT broker from ${mosquittoDir}`);
   const configFile = prepareBroker(settings, join(dataDir, 'broker'), mosquittoDir);
 
   const broker = new ManagedProcess({

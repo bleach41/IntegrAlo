@@ -2,7 +2,7 @@ import { ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { nodeTopic } from '@integralo/contract';
 import mqtt from 'mqtt';
 import type { Settings } from '../settings';
@@ -59,18 +59,39 @@ async function connects(options: mqtt.IClientOptions): Promise<boolean> {
   }
 }
 
+/**
+ * With INTEGRALO_E2E_PACKAGE=<folder> the same checks run against the self-contained package
+ * (pnpm package): its own node.exe, its own Mosquitto and its own dependencies.
+ */
+const PACKAGE = process.env.INTEGRALO_E2E_PACKAGE ? resolve(process.env.INTEGRALO_E2E_PACKAGE) : null;
+
+/** Executable of a running process (Windows). */
+function executableOf(pid: number): string {
+  const out = execFileSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${pid}).Path`], { encoding: 'utf8' });
+  return out.trim();
+}
+
 async function main(): Promise<void> {
   const dataDir = mkdtempSync(join(tmpdir(), 'integralo-supervisor-e2e-'));
+  const env = { ...process.env };
+  if (PACKAGE) delete env.INTEGRALO_MOSQUITTO_DIR;
   const supervisor: ChildProcess = spawn(
-    process.execPath,
-    [join(__dirname, '..', 'main.js'), '--data-dir', dataDir, '--broker-port', String(BROKER_PORT), '--http-port', String(HTTP_PORT), '--panel-port', String(PANEL_PORT)],
-    { stdio: process.env.E2E_VERBOSE ? ['ignore', 'inherit', 'inherit', 'ipc'] : ['ignore', 'ignore', 'ignore', 'ipc'] },
+    PACKAGE ? join(PACKAGE, 'node', 'node.exe') : process.execPath,
+    [PACKAGE ? join(PACKAGE, 'apps', 'supervisor', 'dist', 'main.js') : join(__dirname, '..', 'main.js'), '--data-dir', dataDir, '--broker-port', String(BROKER_PORT), '--http-port', String(HTTP_PORT), '--panel-port', String(PANEL_PORT)],
+    { env, stdio: process.env.E2E_VERBOSE ? ['ignore', 'inherit', 'inherit', 'ipc'] : ['ignore', 'ignore', 'ignore', 'ipc'] },
   );
+  if (PACKAGE) console.log(`Testing the package in ${PACKAGE}`);
   const exited = new Promise<number | null>((resolve) => supervisor.once('exit', (code) => resolve(code)));
 
   try {
     const up = await until(async () => (await health()).broker === 'connected', 40_000);
     check('supervisor starts broker and core; core connected to the broker', !!up);
+    if (PACKAGE) {
+      const brokerExe = executableOf(listeningPid(BROKER_PORT) ?? 0);
+      const coreExe = executableOf(listeningPid(HTTP_PORT) ?? 0);
+      const inside = (p: string) => p.toLowerCase().startsWith(PACKAGE.toLowerCase() + sep);
+      check('package uses its own Mosquitto and its own Node.js', inside(brokerExe) && inside(coreExe), `${brokerExe} · ${coreExe}`);
+    }
 
     const settings = JSON.parse(readFileSync(join(dataDir, 'settings.json'), 'utf8')) as Settings;
     check('first run creates settings with random passwords', settings.core.password.length === 24 && settings.core.password !== settings.nodes.password);

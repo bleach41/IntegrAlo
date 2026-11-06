@@ -4,6 +4,9 @@
   "private": true,
   "description": "IntegrAlo core: node registry, telemetry, commands and audit",
   "main": "dist/main.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node --disable-warning=ExperimentalWarning dist/main.js",
