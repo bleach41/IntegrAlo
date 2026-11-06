@@ -24,6 +24,17 @@ export type EventKind =
   | 'alarm.configured'
   | 'system.node_access_viewed';
 
+export const EVENT_CATEGORIES = ['node', 'command', 'alarm', 'user', 'system'] as const;
+export type EventCategory = (typeof EVENT_CATEGORIES)[number];
+
+const CATEGORY_PREFIXES: Record<EventCategory, string[]> = {
+  node: ['node'],
+  command: ['command'],
+  alarm: ['alarm'],
+  user: ['user', 'setup', 'role'],
+  system: ['system'],
+};
+
 export interface AuditEvent {
   id: number;
   at: number;
@@ -44,14 +55,35 @@ export class EventsService {
       .run(Date.now(), kind, nodeId, actor, detail === undefined ? null : JSON.stringify(detail));
   }
 
-  list(options: { nodeId?: string; limit: number }): AuditEvent[] {
-    const rows = (
-      options.nodeId
-        ? this.database.db
-            .prepare('SELECT * FROM events WHERE node_id = ? ORDER BY id DESC LIMIT ?')
-            .all(options.nodeId, options.limit)
-        : this.database.db.prepare('SELECT * FROM events ORDER BY id DESC LIMIT ?').all(options.limit)
-    ) as Array<{ id: number; at: number; kind: EventKind; node_id: string | null; actor: string; detail_json: string | null }>;
+  /**
+   * Newest first. `category` filters by the kind prefix (users also include setup and roles);
+   * `beforeId` pages backwards, so a client can load older events in blocks.
+   */
+  list(options: { nodeId?: string; category?: EventCategory; beforeId?: number; limit: number }): AuditEvent[] {
+    const where: string[] = [];
+    const params: Array<string | number> = [];
+    if (options.nodeId) {
+      where.push('node_id = ?');
+      params.push(options.nodeId);
+    }
+    if (options.category) {
+      const prefixes = CATEGORY_PREFIXES[options.category];
+      where.push(`(${prefixes.map(() => 'kind LIKE ?').join(' OR ')})`);
+      params.push(...prefixes.map((p) => `${p}.%`));
+    }
+    if (options.beforeId !== undefined) {
+      where.push('id < ?');
+      params.push(options.beforeId);
+    }
+    const sql = `SELECT * FROM events ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT ?`;
+    const rows = this.database.db.prepare(sql).all(...params, options.limit) as unknown as Array<{
+      id: number;
+      at: number;
+      kind: EventKind;
+      node_id: string | null;
+      actor: string;
+      detail_json: string | null;
+    }>;
     return rows.map((r) => ({
       id: r.id,
       at: r.at,

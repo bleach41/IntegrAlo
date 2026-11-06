@@ -61,6 +61,20 @@ export interface AlarmRecord {
   clearedValue: number | null;
 }
 
+/** Audit log entry (GET /api/events): who did what, when (RF-06). */
+export interface AuditEvent {
+  id: number;
+  at: number;
+  /** "category.action", e.g. "command.sent", "user.login". */
+  kind: string;
+  nodeId: string | null;
+  /** Username, or "system" for automatic events. */
+  actor: string;
+  detail: Record<string, unknown> | null;
+}
+
+export type AuditCategory = 'node' | 'command' | 'alarm' | 'user' | 'system';
+
 /** Data to program into a node so it can reach the platform (GET /api/system/node-access). */
 export type NodeAccess =
   | { configured: false }

@@ -1,4 +1,5 @@
-import { Bell, House, LucideIcon, Settings } from 'lucide-react-native';
+import { PERMISSIONS } from '@integralo/contract';
+import { Bell, House, LucideIcon, ScrollText, Settings } from 'lucide-react-native';
 import { TabTrigger, TabTriggerSlotProps } from 'expo-router/ui';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
@@ -6,12 +7,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from './ui';
 
+export interface TabDef {
+  name: string;
+  href: '/' | '/alarms' | '/audit' | '/settings';
+  icon: LucideIcon;
+  label: 'nav.home' | 'nav.alarms' | 'nav.audit' | 'nav.settings';
+  /** Shown only to users with this permission. */
+  permission?: string;
+}
+
 /** Tabs of the main area: name, route and icon. The same list feeds both layouts. */
-export const TABS = [
+export const TABS: TabDef[] = [
   { name: 'home', href: '/', icon: House, label: 'nav.home' },
   { name: 'alarms', href: '/alarms', icon: Bell, label: 'nav.alarms' },
+  { name: 'audit', href: '/audit', icon: ScrollText, label: 'nav.audit', permission: PERMISSIONS.eventsRead },
   { name: 'settings', href: '/settings', icon: Settings, label: 'nav.settings' },
-] as const;
+];
 
 interface ItemProps extends TabTriggerSlotProps {
   icon: LucideIcon;
@@ -56,11 +67,11 @@ function NavItem({ icon: Icon, label, badge, layout, isFocused, onPress, onLongP
 }
 
 /** Bottom tab bar (phones) or side bar (wide screens) with the same tabs. */
-export function NavBar({ layout, alarmCount }: { layout: 'bottom' | 'side'; alarmCount: number }) {
+export function NavBar({ layout, alarmCount, tabs }: { layout: 'bottom' | 'side'; alarmCount: number; tabs: TabDef[] }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
-  const items = TABS.map((tab) => (
+  const items = tabs.map((tab) => (
     <TabTrigger key={tab.name} name={tab.name} asChild>
       <NavItem icon={tab.icon} label={t(tab.label)} layout={layout} badge={tab.name === 'alarms' ? alarmCount : undefined} />
     </TabTrigger>

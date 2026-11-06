@@ -1,7 +1,16 @@
-import { Controller, DefaultValuePipe, Get, Global, Module, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Global, Module, Query } from '@nestjs/common';
+import { z } from 'zod';
 import { RequirePermission } from '../auth/auth.decorators';
 import { PERMISSIONS } from '../auth/permissions';
-import { EventsService } from './events.service';
+import { parseBody } from '../common/json';
+import { EVENT_CATEGORIES, EventsService } from './events.service';
+
+const ListQuerySchema = z.object({
+  nodeId: z.string().optional(),
+  category: z.enum(EVENT_CATEGORIES).optional(),
+  beforeId: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+});
 
 @Controller('events')
 class EventsController {
@@ -9,11 +18,8 @@ class EventsController {
 
   @RequirePermission(PERMISSIONS.eventsRead)
   @Get()
-  list(
-    @Query('nodeId') nodeId?: string,
-    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit = 100,
-  ) {
-    return this.events.list({ nodeId, limit: Math.min(limit, 1000) });
+  list(@Query() query: unknown) {
+    return this.events.list(parseBody(ListQuerySchema, query));
   }
 }
 

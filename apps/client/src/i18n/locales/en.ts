@@ -13,7 +13,38 @@ const en: typeof es = {
   nav: {
     home: 'Home',
     alarms: 'Alarms',
+    audit: 'Audit',
     settings: 'Settings',
+  },
+  audit: {
+    title: 'Audit log',
+    subtitle: 'Who did what, and when',
+    all: 'All',
+    categories: { node: 'Nodes', command: 'Commands', alarm: 'Alarms', user: 'Users', system: 'System' },
+    loadMore: 'Load more',
+    empty: 'No events.',
+    system: 'system',
+    kinds: {
+      node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline' },
+      command: {
+        sent: 'Command sent',
+        confirmed: 'Command confirmed',
+        rejected: 'Command rejected',
+        unconfirmed: 'Command unconfirmed',
+        late_ack: 'Late confirmation',
+      },
+      alarm: { raised: 'Alarm raised', acknowledged: 'Alarm acknowledged', cleared: 'Alarm cleared', configured: 'Alarm configured' },
+      user: {
+        login: 'Signed in',
+        login_failed: 'Failed sign-in',
+        logout: 'Signed out',
+        created: 'User created',
+        updated: 'User changed',
+      },
+      setup: { completed: 'First run completed' },
+      role: { updated: 'Profile permissions changed' },
+      system: { node_access_viewed: 'Node connection data viewed' },
+    },
   },
   temperature: {
     cooling: 'Cooling',
@@ -195,6 +226,9 @@ const en: typeof es = {
     dark: 'Dark',
     es: 'Español',
     en: 'English',
+    visual: 'Process view',
+    flat: 'Synoptic',
+    iso: 'Isometric',
   },
 };
 

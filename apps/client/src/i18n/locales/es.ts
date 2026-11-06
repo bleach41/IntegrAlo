@@ -11,7 +11,38 @@ const es = {
   nav: {
     home: 'Inicio',
     alarms: 'Alarmas',
+    audit: 'Auditoría',
     settings: 'Ajustes',
+  },
+  audit: {
+    title: 'Auditoría',
+    subtitle: 'Quién hizo qué y cuándo',
+    all: 'Todo',
+    categories: { node: 'Nodos', command: 'Órdenes', alarm: 'Alarmas', user: 'Usuarios', system: 'Sistema' },
+    loadMore: 'Cargar más',
+    empty: 'No hay eventos.',
+    system: 'sistema',
+    kinds: {
+      node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea' },
+      command: {
+        sent: 'Orden enviada',
+        confirmed: 'Orden confirmada',
+        rejected: 'Orden rechazada',
+        unconfirmed: 'Orden sin confirmar',
+        late_ack: 'Confirmación tardía',
+      },
+      alarm: { raised: 'Alarma activada', acknowledged: 'Alarma reconocida', cleared: 'Alarma normalizada', configured: 'Alarma configurada' },
+      user: {
+        login: 'Inicio de sesión',
+        login_failed: 'Inicio de sesión fallido',
+        logout: 'Cierre de sesión',
+        created: 'Usuario creado',
+        updated: 'Usuario modificado',
+      },
+      setup: { completed: 'Primer uso completado' },
+      role: { updated: 'Permisos de perfil modificados' },
+      system: { node_access_viewed: 'Consulta de datos de conexión de nodos' },
+    },
   },
   temperature: {
     cooling: 'Enfriando',
@@ -193,6 +224,9 @@ const es = {
     dark: 'Oscuro',
     es: 'Español',
     en: 'English',
+    visual: 'Vista de los procesos',
+    flat: 'Sinóptico',
+    iso: 'Isométrica',
   },
 };
 

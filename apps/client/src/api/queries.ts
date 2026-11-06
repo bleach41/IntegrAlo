@@ -1,5 +1,14 @@
-import type { AlarmRecord, CommandRecord, ModuleManifest, NodeAccess, NodeInfo, TelemetrySample } from '@integralo/contract';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type {
+  AlarmRecord,
+  AuditCategory,
+  AuditEvent,
+  CommandRecord,
+  ModuleManifest,
+  NodeAccess,
+  NodeInfo,
+  TelemetrySample,
+} from '@integralo/contract';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useSession } from '@/features/auth/session.store';
 import { ApiError, apiRequest } from './client';
@@ -182,6 +191,25 @@ export function useUpdateUser() {
     mutationFn: ({ id, changes }: { id: number; changes: { roleId?: string; disabled?: boolean; password?: string } }) =>
       api<UserInfo>('PATCH', `/users/${id}`, changes),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+const AUDIT_PAGE = 50;
+
+/** Audit log, newest first, loaded in pages of 50 going backwards. */
+export function useAuditLog(category: AuditCategory | undefined) {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: ['audit', category ?? 'all'],
+    initialPageParam: undefined as number | undefined,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: String(AUDIT_PAGE) });
+      if (category) params.set('category', category);
+      if (pageParam !== undefined) params.set('beforeId', String(pageParam));
+      return api<AuditEvent[]>('GET', `/events?${params}`);
+    },
+    getNextPageParam: (page) => (page.length === AUDIT_PAGE ? page[page.length - 1].id : undefined),
+    refetchInterval: 15_000,
   });
 }
 
