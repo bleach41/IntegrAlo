@@ -8,7 +8,8 @@ import { useTheme } from '@/theme/ThemeProvider';
 
 /**
  * Connection data to program into a new node (ESP32): broker address, port, topic prefix
- * and the node account. Loaded only on request, because each read is audited.
+ * and the node account. Loaded only on request, because each read is audited, and hidden
+ * again with one tap (the data is dropped from memory, not just covered).
  */
 export function NodeAccessCard() {
   const { t } = useTranslation();
@@ -41,6 +42,16 @@ export function NodeAccessCard() {
                 {reveal ? <EyeOff size={16} color={colors.accent} /> : <Eye size={16} color={colors.accent} />}
               </Pressable>
             </View>
+          </View>
+          <View className="mt-3 flex-row justify-end">
+            <SmallButton
+              label={t('nodeAccess.hideAll')}
+              icon={<EyeOff size={14} color={colors.accent} />}
+              onPress={() => {
+                setReveal(false);
+                access.reset();
+              }}
+            />
           </View>
         </View>
       )}
