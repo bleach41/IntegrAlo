@@ -17,7 +17,7 @@ export function PendingNodeCard({ node, canApprove }: { node: NodeInfo; canAppro
   const manifest = useModules().data?.find((m) => m.id === node.module);
 
   return (
-    <Card className="h-full border-warning/50 p-4">
+    <Card className="border-warning/50 p-4 md:h-full">
       <NodeHeader node={node} manifest={manifest} compact />
       {canApprove ? (
         <View className="mt-3">

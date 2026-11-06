@@ -24,7 +24,7 @@ export function NodeCard({ node, manifest, alarmCount }: { node: NodeInfo; manif
     <Pressable
       onPress={() => router.push(`/nodes/${node.id}`)}
       accessibilityRole="button"
-      className={`h-full rounded-2xl border bg-surface p-4 active:opacity-80 ${alarmCount > 0 ? 'border-danger/50' : 'border-line'}`}
+      className={`rounded-2xl border bg-surface p-4 md:h-full active:opacity-80 ${alarmCount > 0 ? 'border-danger/50' : 'border-line'}`}
     >
       <NodeHeader node={node} manifest={manifest} compact />
       <View className={`my-3 min-h-12 justify-center ${node.online ? '' : 'opacity-40'}`}>

@@ -145,33 +145,48 @@ export function Button({
 }
 
 /** Compact, low-emphasis action for dense panels (e.g. sending a command). */
+/**
+ * Classes per tone, written out in full so NativeWind finds them. "warning" and "danger"
+ * mark actions that stop or remove something (disconnect, retire), so they are not
+ * confused with the ordinary green ones.
+ */
+const SMALL_BUTTON_TONES = {
+  accent: { soft: 'bg-accent/15 active:bg-accent/25', softText: 'text-accent', solid: 'bg-accent-strong', solidText: 'text-on-accent' },
+  warning: { soft: 'bg-warning/15 active:bg-warning/25', softText: 'text-warning', solid: 'bg-warning', solidText: 'text-canvas' },
+  danger: { soft: 'bg-danger/15 active:bg-danger/25', softText: 'text-danger', solid: 'bg-danger', solidText: 'text-white' },
+} as const;
+
 export function SmallButton({
   label,
   onPress,
   busy = false,
   disabled = false,
   primary = false,
+  tone = 'accent',
   icon,
 }: {
   label: string;
   onPress: () => void;
   busy?: boolean;
   disabled?: boolean;
-  /** Filled: the main action of a form (save, create); the others stay soft. */
+  /** Filled: the main action of a form (save, create, confirm); the others stay soft. */
   primary?: boolean;
+  tone?: keyof typeof SMALL_BUTTON_TONES;
   icon?: ReactNode;
 }) {
   const { colors } = useTheme();
+  const style = SMALL_BUTTON_TONES[tone];
+  const spinner = primary ? (tone === 'accent' ? colors['on-accent'] : '#ffffff') : colors[tone];
   return (
     <Pressable
       onPress={onPress}
       disabled={busy || disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled, busy }}
-      className={`h-9 flex-row items-center justify-center self-start rounded-full px-3.5 ${primary ? 'bg-accent-strong active:opacity-80' : 'bg-accent/15 active:bg-accent/25'} ${busy ? 'opacity-60' : disabled ? 'opacity-40' : ''}`}
+      className={`h-9 flex-row items-center justify-center self-start rounded-full px-3.5 ${primary ? `${style.solid} active:opacity-80` : style.soft} ${busy ? 'opacity-60' : disabled ? 'opacity-40' : ''}`}
     >
-      {busy ? <ActivityIndicator size="small" color={primary ? colors['on-accent'] : colors.accent} /> : icon}
-      <Text className={`text-sm font-semibold ${icon || busy ? 'ml-1.5' : ''} ${primary ? 'text-on-accent' : 'text-accent'}`}>{label}</Text>
+      {busy ? <ActivityIndicator size="small" color={spinner} /> : icon}
+      <Text className={`text-sm font-semibold ${icon || busy ? 'ml-1.5' : ''} ${primary ? style.solidText : style.softText}`}>{label}</Text>
     </Pressable>
   );
 }

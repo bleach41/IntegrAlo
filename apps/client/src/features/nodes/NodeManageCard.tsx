@@ -34,6 +34,8 @@ export function NodeManageCard({ node }: { node: NodeInfo }) {
       {confirming ? (
         <View className="flex-row items-center">
           <SmallButton
+            primary
+            tone="danger"
             label={node.online ? t('manage.disconnectConfirm') : t('manage.retireConfirm')}
             busy={retire.isPending}
             onPress={() =>
@@ -47,7 +49,7 @@ export function NodeManageCard({ node }: { node: NodeInfo }) {
           </View>
         </View>
       ) : (
-        <SmallButton label={node.online ? t('manage.disconnect') : t('manage.retire')} onPress={() => setConfirming(true)} />
+        <SmallButton tone="warning" label={node.online ? t('manage.disconnect') : t('manage.retire')} onPress={() => setConfirming(true)} />
       )}
     </View>
   );
