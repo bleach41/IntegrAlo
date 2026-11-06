@@ -10,7 +10,7 @@ import { useTheme } from '@/theme/ThemeProvider';
  * what the air conditioner is doing (cooling, idle or off), which the generic summary
  * cannot infer. It is optional: without it the generic summary is used.
  */
-export function TemperatureSummary({ manifest, sample }: SummaryProps) {
+export function TemperatureSummary({ manifest, sample, compact = false }: SummaryProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const booleans = { yes: t('common.yes'), no: t('common.no') };
@@ -29,6 +29,29 @@ export function TemperatureSummary({ manifest, sample }: SummaryProps) {
         ? { icon: Snowflake, label: t('temperature.cooling'), color: colors.accent, tone: 'bg-accent/15' }
         : { icon: Pause, label: t('temperature.idle'), color: colors.muted, tone: 'bg-line' };
   const Icon = state.icon;
+  const chip = (
+    <View className={`flex-row items-center rounded-full ${compact ? 'mt-1 px-2 py-0.5' : 'mt-3 px-3 py-1'} ${state.tone}`}>
+      <Icon size={compact ? 12 : 14} color={state.color} />
+      <Text className="ml-1 text-xs font-medium" style={{ color: state.color }}>
+        {state.label}
+        {mode !== 'off' && output > 0 && output < 100 ? ` ${Math.round(output)} %` : ''}
+      </Text>
+    </View>
+  );
+
+  if (compact) {
+    return (
+      <View className="flex-row items-center justify-between">
+        <Text className="text-4xl font-semibold tracking-tight text-ink">{show('temperature')}</Text>
+        <View className="ml-3 flex-1 items-end">
+          <Text className="text-xs text-muted" numberOfLines={1}>
+            {t('temperature.setpoint', { value: show('setpoint') })} · {show('mode')}
+          </Text>
+          {chip}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="items-center py-2">
@@ -36,13 +59,7 @@ export function TemperatureSummary({ manifest, sample }: SummaryProps) {
       <Text className="mt-1 text-sm text-muted">
         {t('temperature.setpoint', { value: show('setpoint') })} · {show('mode')}
       </Text>
-      <View className={`mt-3 flex-row items-center rounded-full px-3 py-1 ${state.tone}`}>
-        <Icon size={14} color={state.color} />
-        <Text className="ml-1.5 text-xs font-medium" style={{ color: state.color }}>
-          {state.label}
-          {mode !== 'off' && output > 0 && output < 100 ? ` ${Math.round(output)} %` : ''}
-        </Text>
-      </View>
+      {chip}
     </View>
   );
 }
