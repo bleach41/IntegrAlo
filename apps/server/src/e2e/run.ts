@@ -1,8 +1,9 @@
 import { ChildProcess, spawn } from 'node:child_process';
+import { createPublicKey, randomBytes, verify } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { nodeTopic } from '@integralo/contract';
+import { identityMessage, nodeTopic, parsePairingPayload } from '@integralo/contract';
 import { startTestBroker } from '@integralo/testing';
 import mqtt from 'mqtt';
 
@@ -114,6 +115,17 @@ async function main(): Promise<void> {
     }, 30000);
     check('core started and connected to the broker', !!health);
 
+    // Server identity (pairing): the core signs the app's challenge with its Ed25519 key
+    check('health identifies the server', typeof health?.publicKey === 'string' && health.publicKey.length === 43 && /·/.test(health.serverId));
+    const nonce = randomBytes(24).toString('base64url');
+    const proof = await http('GET', `/identity?nonce=${nonce}`, undefined, '');
+    const publicKey = createPublicKey({ key: { kty: 'OKP', crv: 'Ed25519', x: health?.publicKey ?? '' }, format: 'jwk' });
+    const signed = (n: string) => verify(null, Buffer.from(identityMessage(n)), publicKey, Buffer.from(proof.data?.signature ?? '', 'base64url'));
+    check('identity challenge signed with the server key', proof.status === 200 && signed(nonce));
+    check('the signature is only valid for that challenge', !signed(`${nonce}x`));
+    check('malformed challenges refused', (await http('GET', '/identity?nonce=short', undefined, '')).status === 400);
+    check('pairing data needs a session', (await http('GET', '/system/pairing', undefined, '')).status === 401);
+
     // RF-08: first-run setup, sign-in and permissions
     check('API refuses requests without a session', (await http('GET', '/nodes')).status === 401);
     check('fresh installation needs setup', (await http('GET', '/setup')).data.needsSetup === true);
@@ -124,6 +136,9 @@ async function main(): Promise<void> {
     const login = await http('POST', '/auth/login', { username: 'admin', password: 'admin-e2e-pass' });
     check('engineer signs in', login.status === 200 && typeof login.data.token === 'string');
     token = login.data.token;
+    const pairing = await http('GET', '/system/pairing');
+    const parsed = parsePairingPayload(pairing.data?.payload ?? '');
+    check('pairing QR carries the server key and its addresses', pairing.status === 200 && parsed?.publicKey === health?.publicKey && (parsed?.addresses.length ?? 0) > 0);
     const created = await http('POST', '/users', { username: 'tony', password: 'tony-e2e-pass', roleId: 'user' });
     check('engineer creates a user account', created.status === 201);
     check('passwords shorter than 8 characters refused',

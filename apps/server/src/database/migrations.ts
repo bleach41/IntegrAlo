@@ -149,4 +149,14 @@ export const MIGRATIONS: string[] = [
   -- but keeps its history; it goes back to pending and reappears if it ever reconnects.
   ALTER TABLE nodes ADD COLUMN retired_at INTEGER;
   `,
+  `
+  -- Identity of this core (Ed25519): the public key identifies it to the apps (pairing);
+  -- the private key signs their challenges and never leaves the core. One row only.
+  CREATE TABLE server_identity (
+    id          INTEGER PRIMARY KEY CHECK (id = 1),
+    public_key  TEXT NOT NULL,
+    private_key TEXT NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+  `,
 ];

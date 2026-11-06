@@ -1,3 +1,4 @@
+import type { ServerHealth } from '@integralo/contract';
 import { Controller, Get, Global, Module } from '@nestjs/common';
 import { AlarmsModule } from './alarms/alarms.module';
 import { Public } from './auth/auth.decorators';
@@ -12,6 +13,7 @@ import { MqttService } from './mqtt/mqtt.service';
 import { NodesModule } from './nodes/nodes.module';
 import { RealtimeGateway } from './realtime/realtime.gateway';
 import { RegistryModule } from './registry/registry.module';
+import { IdentityService } from './system/identity.service';
 import { SystemModule } from './system/system.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 
@@ -24,12 +26,22 @@ class ConfigModule {}
 
 @Controller('health')
 class HealthController {
-  constructor(private readonly mqtt: MqttService) {}
+  constructor(
+    private readonly mqtt: MqttService,
+    private readonly identity: IdentityService,
+  ) {}
 
+  /** Public: also how apps recognise an IntegrAlo core while searching the network. */
   @Public()
   @Get()
-  health() {
-    return { status: 'ok', broker: this.mqtt.connected ? 'connected' : 'disconnected' };
+  health(): ServerHealth {
+    return {
+      status: 'ok',
+      broker: this.mqtt.connected ? 'connected' : 'disconnected',
+      serverId: this.identity.serverId,
+      name: this.identity.name,
+      publicKey: this.identity.publicKey,
+    };
   }
 }
 
