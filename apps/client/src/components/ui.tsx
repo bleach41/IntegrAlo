@@ -1,7 +1,8 @@
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, TextInputProps, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FLOATING_NAV_SPACE, useIsWide } from './layout';
 import type { Message } from '@/features/auth/errors';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -26,11 +27,16 @@ export function Screen({
   wide?: boolean;
   inTabs?: boolean;
 }) {
+  // On phones the tab bar floats over the content: leave room for it below the last card.
+  const wideScreen = useIsWide();
+  const insets = useSafeAreaInsets();
+  const bottom = inTabs && !wideScreen ? FLOATING_NAV_SPACE + Math.max(insets.bottom, 12) : undefined;
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={inTabs ? ['top', 'left', 'right'] : undefined}>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerClassName={`grow px-5 py-8 ${centered ? 'justify-center' : ''}`}
+          contentContainerStyle={bottom !== undefined ? { paddingBottom: bottom } : undefined}
           keyboardShouldPersistTaps="handled"
         >
           <View className={`w-full self-center ${wide ? 'max-w-6xl' : 'max-w-xl'}`}>{children}</View>

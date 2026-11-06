@@ -2,7 +2,7 @@ import { PERMISSIONS } from '@integralo/contract';
 import { Bell, House, LucideIcon, ScrollText, Settings } from 'lucide-react-native';
 import { TabTrigger, TabTriggerSlotProps } from 'expo-router/ui';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from './ui';
@@ -45,7 +45,7 @@ function NavItem({ icon: Icon, label, badge, layout, isFocused, onPress, onLongP
       className={
         side
           ? `mb-1 flex-row items-center rounded-xl px-3 py-2.5 ${isFocused ? 'bg-accent/15' : 'active:bg-line'}`
-          : 'flex-1 items-center pb-1 pt-2 active:opacity-70'
+          : `flex-1 items-center rounded-full py-2 active:opacity-70 ${isFocused ? 'bg-accent/15' : ''}`
       }
     >
       <View>
@@ -87,9 +87,20 @@ export function NavBar({ layout, alarmCount, tabs }: { layout: 'bottom' | 'side'
       </View>
     );
   }
+  // Floating, translucent pill over the content; screens leave FLOATING_NAV_SPACE free at
+  // the bottom so nothing stays hidden behind it. The blur exists only on the web; on the
+  // phones the translucent surface alone gives the effect.
   return (
-    <View className="flex-row border-t border-line bg-surface" style={{ paddingBottom: Math.max(insets.bottom, 6) }}>
-      {items}
+    <View pointerEvents="box-none" className="absolute inset-x-0 bottom-0 items-center px-4" style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+      <View
+        className="w-full max-w-md flex-row rounded-full border border-line bg-surface/80 p-1.5"
+        style={[
+          { shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 12 },
+          Platform.OS === 'web' ? ({ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' } as object) : null,
+        ]}
+      >
+        {items}
+      </View>
     </View>
   );
 }
