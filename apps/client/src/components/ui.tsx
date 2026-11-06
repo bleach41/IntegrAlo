@@ -129,20 +129,23 @@ export function SmallButton({
   label,
   onPress,
   busy = false,
+  disabled = false,
   icon,
 }: {
   label: string;
   onPress: () => void;
   busy?: boolean;
+  disabled?: boolean;
   icon?: ReactNode;
 }) {
   const { colors } = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      disabled={busy}
+      disabled={busy || disabled}
       accessibilityRole="button"
-      className={`h-9 flex-row items-center justify-center self-start rounded-full bg-accent/15 px-3.5 active:bg-accent/25 ${busy ? 'opacity-60' : ''}`}
+      accessibilityState={{ disabled, busy }}
+      className={`h-9 flex-row items-center justify-center self-start rounded-full bg-accent/15 px-3.5 active:bg-accent/25 ${busy ? 'opacity-60' : disabled ? 'opacity-40' : ''}`}
     >
       {busy ? <ActivityIndicator size="small" color={colors.accent} /> : icon}
       <Text className="ml-1.5 text-sm font-semibold text-accent">{label}</Text>
@@ -165,23 +168,32 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  busyValue,
+  disabled = false,
 }: {
   value: T;
   options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
+  /** Option whose change is in progress: shown selected, with a spinner. */
+  busyValue?: T;
+  disabled?: boolean;
 }) {
+  const { colors } = useTheme();
   return (
-    <View className="flex-row rounded-xl border border-line bg-canvas p-1">
+    <View className={`flex-row rounded-xl border border-line bg-canvas p-1 ${disabled ? 'opacity-40' : ''}`}>
       {options.map((option) => {
         const selected = option.value === value;
+        const busy = option.value === busyValue;
         return (
           <Pressable
             key={option.value}
             onPress={() => onChange(option.value)}
+            disabled={disabled || busyValue !== undefined}
             accessibilityRole="button"
-            accessibilityState={{ selected }}
-            className={`flex-1 items-center rounded-lg py-2 ${selected ? 'bg-accent-strong' : 'active:bg-line'}`}
+            accessibilityState={{ selected, disabled, busy }}
+            className={`flex-1 flex-row items-center justify-center rounded-lg py-2 ${selected ? 'bg-accent-strong' : disabled ? '' : 'active:bg-line'}`}
           >
+            {busy ? <ActivityIndicator size="small" color={selected ? colors['on-accent'] : colors.muted} style={{ marginRight: 6 }} /> : null}
             <Text className={`text-sm font-medium ${selected ? 'text-on-accent' : 'text-muted'}`}>{option.label}</Text>
           </Pressable>
         );

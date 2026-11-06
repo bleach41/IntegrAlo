@@ -58,7 +58,8 @@
     },
     {
       "type": "set_pump",
-      "label": { "es": "Bomba (modo manual)", "en": "Pump (manual mode)" },
+      "label": { "es": "Bomba", "en": "Pump" },
+      "enabledWhen": { "variable": "mode", "values": ["manual"] },
       "fields": {
         "pump": {
           "type": "enum",

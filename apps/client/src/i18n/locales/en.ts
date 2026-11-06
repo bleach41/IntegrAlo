@@ -153,6 +153,7 @@ const en: typeof es = {
     offline: 'The node is offline: commands cannot be sent.',
     nothingToSend: 'Change at least one value.',
     current: 'Current: {{value}}',
+    onlyWhen: 'Available only in {{values}} mode.',
     reasons: {
       out_of_range: 'value outside the allowed range',
       invalid_payload: 'invalid values',

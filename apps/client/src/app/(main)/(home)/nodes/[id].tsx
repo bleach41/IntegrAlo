@@ -101,7 +101,7 @@ export default function NodeDetailScreen() {
             <Section title={t('detail.control')}>
               {!node.online ? <Text className="mb-3 text-xs text-warning">{t('commands.offline')}</Text> : null}
               {control.map((command) => (
-                <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
+                <CommandForm key={command.type} nodeId={node.id} command={command} manifest={manifest} current={current} disabled={!node.online} />
               ))}
             </Section>
           ) : null}
@@ -109,7 +109,7 @@ export default function NodeDetailScreen() {
           {engineering.length > 0 ? (
             <Section title={t('detail.engineering')}>
               {engineering.map((command) => (
-                <CommandForm key={command.type} nodeId={node.id} command={command} current={current} disabled={!node.online} />
+                <CommandForm key={command.type} nodeId={node.id} command={command} manifest={manifest} current={current} disabled={!node.online} />
               ))}
             </Section>
           ) : null}

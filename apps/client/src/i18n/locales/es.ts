@@ -151,6 +151,7 @@ const es = {
     offline: 'El nodo está fuera de línea: no se pueden enviar órdenes.',
     nothingToSend: 'Cambia al menos un valor.',
     current: 'Actual: {{value}}',
+    onlyWhen: 'Disponible solo en modo {{values}}.',
     reasons: {
       out_of_range: 'valor fuera del rango permitido',
       invalid_payload: 'valores no válidos',

@@ -89,6 +89,12 @@ export const CommandDefSchema = z.object({
   fields: z.record(KeySchema, CommandFieldDefSchema),
   /** True when any subset of the fields may be sent (e.g. changing one control parameter). */
   partial: z.boolean().optional(),
+  /**
+   * The command only makes sense while a variable has one of these values (e.g. the pump
+   * can be switched by hand only in manual mode). Clients show it disabled otherwise;
+   * the node remains the authority and may still reject it.
+   */
+  enabledWhen: z.object({ variable: KeySchema, values: z.array(z.string()).min(1) }).optional(),
 });
 export type CommandDef = z.infer<typeof CommandDefSchema>;
 
@@ -139,6 +145,12 @@ export const ModuleManifestSchema = z
     const types = manifest.commands.map((c) => c.type);
     for (const type of new Set(types.filter((t, i) => types.indexOf(t) !== i))) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: `duplicated command "${type}"` });
+    }
+    for (const command of manifest.commands) {
+      const when = command.enabledWhen;
+      if (when && !keys.includes(when.variable)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `command "${command.type}" is enabled by unknown variable "${when.variable}"` });
+      }
     }
     for (const alarm of manifest.alarms) {
       const variable = manifest.variables.find((v) => v.key === alarm.variable);
