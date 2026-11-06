@@ -61,6 +61,19 @@ export interface AlarmRecord {
   clearedValue: number | null;
 }
 
+/** Data to program into a node so it can reach the platform (GET /api/system/node-access). */
+export type NodeAccess =
+  | { configured: false }
+  | {
+      configured: true;
+      /** IPv4 addresses of the platform computer on the local network. */
+      hosts: string[];
+      port: number;
+      topicPrefix: string;
+      username: string;
+      password: string;
+    };
+
 /** Messages of the real-time channel (WebSocket /api/ws). */
 export type RealtimeEvent =
   | { event: 'auth'; data: { username: string; roleId: string } }

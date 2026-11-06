@@ -21,7 +21,8 @@ export type EventKind =
   | 'alarm.raised'
   | 'alarm.acknowledged'
   | 'alarm.cleared'
-  | 'alarm.configured';
+  | 'alarm.configured'
+  | 'system.node_access_viewed';
 
 export interface AuditEvent {
   id: number;

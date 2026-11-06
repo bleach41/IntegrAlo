@@ -16,6 +16,8 @@ export interface AppConfig {
   telemetryTimeoutMs: number;
   /** Exported web client served at "/" (all-in-one installation); none in development. */
   webDir?: string;
+  /** Broker access for nodes, given by the supervisor; absent in development. */
+  nodeAccess?: { port: number; username: string; password: string };
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -33,5 +35,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     retentionDays: Number(env.INTEGRALO_RETENTION_DAYS ?? 60),
     telemetryTimeoutMs: Number(env.INTEGRALO_TELEMETRY_TIMEOUT_MS ?? 30_000),
     webDir: env.INTEGRALO_WEB_DIR,
+    nodeAccess:
+      env.INTEGRALO_NODE_MQTT_USERNAME && env.INTEGRALO_NODE_MQTT_PASSWORD
+        ? {
+            port: Number(env.INTEGRALO_NODE_MQTT_PORT ?? 1883),
+            username: env.INTEGRALO_NODE_MQTT_USERNAME,
+            password: env.INTEGRALO_NODE_MQTT_PASSWORD,
+          }
+        : undefined,
   };
 }

@@ -69,6 +69,10 @@ async function main(): Promise<void> {
       INTEGRALO_TOPIC_PREFIX: settings.topicPrefix,
       INTEGRALO_DB_PATH: join(dataDir, 'integralo.sqlite'),
       INTEGRALO_WEB_DIR: existsSync(join(webDir, 'index.html')) ? webDir : undefined,
+      // Shown to engineers in the app, to program new nodes.
+      INTEGRALO_NODE_MQTT_PORT: String(settings.brokerPort),
+      INTEGRALO_NODE_MQTT_USERNAME: settings.nodes.username,
+      INTEGRALO_NODE_MQTT_PASSWORD: settings.nodes.password,
     },
     log,
   });

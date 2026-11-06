@@ -12,6 +12,7 @@ import { MqttService } from './mqtt/mqtt.service';
 import { NodesModule } from './nodes/nodes.module';
 import { RealtimeGateway } from './realtime/realtime.gateway';
 import { RegistryModule } from './registry/registry.module';
+import { SystemModule } from './system/system.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 
 @Global()
@@ -45,6 +46,7 @@ class HealthController {
     TelemetryModule,
     CommandsModule,
     AlarmsModule,
+    SystemModule,
   ],
   controllers: [HealthController],
   providers: [RealtimeGateway],

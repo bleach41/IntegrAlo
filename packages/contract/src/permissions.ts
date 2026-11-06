@@ -16,6 +16,8 @@ export const PERMISSIONS = {
   alarmsAck: 'alarms.ack',
   alarmsConfigure: 'alarms.configure',
   usersManage: 'users.manage',
+  /** See the broker address and node account to program into new nodes. */
+  nodeAccessRead: 'system.node_access',
 } as const;
 
 export function commandPermission(module: string, type: string): string {

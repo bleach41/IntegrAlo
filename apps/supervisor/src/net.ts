@@ -32,6 +32,7 @@ export async function waitForPort(port: number, timeoutMs: number): Promise<bool
 export function lanAddresses(): string[] {
   return Object.values(networkInterfaces())
     .flat()
-    .filter((a) => a && a.family === 'IPv4' && !a.internal)
+    // 169.254.x.x is link-local (adapter without an address): no node can use it.
+    .filter((a) => a && a.family === 'IPv4' && !a.internal && !a.address.startsWith('169.254.'))
     .map((a) => a!.address);
 }
