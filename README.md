@@ -50,7 +50,9 @@ Genera el paquete y `release/IntegrAlo-Setup-<versión>.exe`. El instalador, eje
 - abre en el firewall los puertos 4100 (app) y 1883 (nodos) en redes privadas y de dominio, y en públicas solo si se marca;
 - ofrece detener el servicio Mosquitto de Windows si ya existe;
 - registra e inicia el servicio `IntegrAlo`, de inicio automático;
-- deja en el menú Inicio, carpeta IntegrAlo, tres accesos: «Panel del servidor IntegrAlo», «Iniciar servidor IntegrAlo» (inicia el servicio si está detenido y abre el panel) y «Detener servidor IntegrAlo» (parada ordenada). Iniciar y detener piden permiso de administrador solo para ese paso.
+- deja en el menú Inicio, carpeta IntegrAlo, tres accesos: «Panel del servidor IntegrAlo», «Iniciar servidor IntegrAlo» (inicia el servicio si está detenido y abre el panel) y «Detener servidor IntegrAlo» (parada ordenada). Iniciar y detener piden permiso de administrador solo para ese paso. Opcionalmente (marcado por defecto) crea los dos últimos también en el escritorio.
+
+Los iconos son propios y se generan con `python scripts/make-icons.py` (requiere Pillow) en `installer/icons`.
 
 Al desinstalar se conservan los datos, salvo que se pida borrarlos.
 

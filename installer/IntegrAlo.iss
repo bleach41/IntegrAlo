@@ -39,7 +39,9 @@ Compression=lzma2/max
 SolidCompression=yes
 OutputBaseFilename=IntegrAlo-Setup-{#AppVersion}
 UninstallDisplayName=IntegrAlo
-UninstallDisplayIcon={app}\mosquitto\mosquitto.exe
+UninstallDisplayIcon={app}\icons\integralo.ico
+; Own icons, drawn by scripts/make-icons.py (installer/icons).
+SetupIconFile=icons\integralo.ico
 ; The service keeps files open: it is stopped in PrepareToInstall, not by Restart Manager.
 CloseApplications=no
 
@@ -52,6 +54,8 @@ spanish.TaskFirewallPublic=Permitirlos también en redes públicas (solo si la r
 spanish.TaskMosquitto=Detener el servicio Mosquitto de Windows ya instalado y dejarlo en inicio manual (ocupa el puerto {#BrokerPort}; IntegrAlo trae su propio Mosquitto)
 spanish.GroupNetwork=Red:
 spanish.GroupOther=Otros:
+spanish.GroupShortcuts=Accesos directos:
+spanish.TaskDesktop=Crear en el escritorio los accesos «Iniciar servidor IntegrAlo» y «Detener servidor IntegrAlo»
 spanish.StoppingService=Deteniendo el servicio IntegrAlo…
 spanish.StartingService=Registrando e iniciando el servicio IntegrAlo…
 spanish.OpenPanel=Abrir el panel del servidor
@@ -67,6 +71,7 @@ spanish.DeleteData=¿Borrar también los datos de IntegrAlo?%n%nSe eliminarían 
 Name: "firewall"; Description: "{cm:TaskFirewall}"; GroupDescription: "{cm:GroupNetwork}"
 Name: "firewall\public"; Description: "{cm:TaskFirewallPublic}"; GroupDescription: "{cm:GroupNetwork}"; Flags: unchecked
 Name: "mosquitto"; Description: "{cm:TaskMosquitto}"; GroupDescription: "{cm:GroupOther}"; Check: MosquittoServiceExists
+Name: "desktopicons"; Description: "{cm:TaskDesktop}"; GroupDescription: "{cm:GroupShortcuts}"
 
 [InstallDelete]
 ; On updates, the previous code and dependencies are replaced as a whole (not merged).
@@ -80,6 +85,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdi
 ; Start menu helpers to start and stop the service (relative to this script's folder).
 Source: "iniciar-servidor.cmd"; DestDir: "{app}\service"; Flags: ignoreversion
 Source: "detener-servidor.cmd"; DestDir: "{app}\service"; Flags: ignoreversion
+Source: "icons\*.ico"; DestDir: "{app}\icons"; Flags: ignoreversion
 
 [Dirs]
 Name: "{commonappdata}\IntegrAlo"; Flags: uninsneveruninstall
@@ -90,10 +96,13 @@ Filename: "{app}\Panel del servidor.url"; Section: "InternetShortcut"; Key: "URL
 [Icons]
 ; (No shortcut to the logs folder: opening it from Explorer offers to grant the user
 ; permanent access to the protected data folder. The panel shows the recent log.)
-Name: "{autoprograms}\IntegrAlo\{cm:PanelShortcut}"; Filename: "{app}\Panel del servidor.url"; IconFilename: "{app}\apps\client\dist\favicon.ico"
+Name: "{autoprograms}\IntegrAlo\{cm:PanelShortcut}"; Filename: "{app}\Panel del servidor.url"; IconFilename: "{app}\icons\integralo.ico"
 ; Starting or stopping a service needs administrator rights: each script asks (UAC) only for that step.
-Name: "{autoprograms}\IntegrAlo\{cm:StartShortcut}"; Filename: "{app}\service\iniciar-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{app}\apps\client\dist\favicon.ico"; Comment: "{cm:StartShortcutComment}"
-Name: "{autoprograms}\IntegrAlo\{cm:StopShortcut}"; Filename: "{app}\service\detener-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{sys}\shell32.dll"; IconIndex: 27; Comment: "{cm:StopShortcutComment}"
+Name: "{autoprograms}\IntegrAlo\{cm:StartShortcut}"; Filename: "{app}\service\iniciar-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{app}\icons\iniciar.ico"; Comment: "{cm:StartShortcutComment}"
+Name: "{autoprograms}\IntegrAlo\{cm:StopShortcut}"; Filename: "{app}\service\detener-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{app}\icons\detener.ico"; Comment: "{cm:StopShortcutComment}"
+; Desktop (optional task). "Iniciar" also opens the panel when the server is already running.
+Name: "{autodesktop}\{cm:StartShortcut}"; Filename: "{app}\service\iniciar-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{app}\icons\iniciar.ico"; Comment: "{cm:StartShortcutComment}"; Tasks: desktopicons
+Name: "{autodesktop}\{cm:StopShortcut}"; Filename: "{app}\service\detener-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{app}\icons\detener.ico"; Comment: "{cm:StopShortcutComment}"; Tasks: desktopicons
 
 [Run]
 ; Everything else (permissions, Mosquitto, firewall, service) runs from [Code], in order.
