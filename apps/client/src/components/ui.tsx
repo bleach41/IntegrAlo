@@ -21,15 +21,22 @@ export function Screen({
   centered = false,
   wide = false,
   inTabs = false,
+  header,
+  sticky,
 }: {
   children: ReactNode;
   centered?: boolean;
   wide?: boolean;
   inTabs?: boolean;
+  /** Top of the screen (title) that scrolls away; needed only together with `sticky`. */
+  header?: ReactNode;
+  /** Stays pinned to the top while the rest scrolls (e.g. the audit filters). */
+  sticky?: ReactNode;
 }) {
   // On phones the tab bar floats over the content: leave room for it below the last card.
   const wideScreen = useIsWide();
   const insets = useSafeAreaInsets();
+  const width = wide ? 'max-w-6xl' : 'max-w-xl';
   const bottom = inTabs && !wideScreen ? FLOATING_NAV_SPACE + Math.max(insets.bottom, 12) : undefined;
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={inTabs ? ['top', 'left', 'right'] : undefined}>
@@ -38,8 +45,13 @@ export function Screen({
           contentContainerClassName={`grow px-5 py-8 ${centered ? 'justify-center' : ''}`}
           contentContainerStyle={bottom !== undefined ? { paddingBottom: bottom } : undefined}
           keyboardShouldPersistTaps="handled"
+          stickyHeaderIndices={sticky ? [1] : undefined}
         >
-          <View className={`w-full self-center ${wide ? 'max-w-6xl' : 'max-w-xl'}`}>{children}</View>
+          {sticky ? <View className={`w-full self-center ${width}`}>{header}</View> : null}
+          {sticky ? <View className="-mx-5 bg-canvas px-5 pb-1 pt-2">
+            <View className={`w-full self-center ${width}`}>{sticky}</View>
+          </View> : null}
+          <View className={`w-full self-center ${width}`}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

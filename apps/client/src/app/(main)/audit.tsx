@@ -18,14 +18,20 @@ export default function AuditScreen() {
   const events = log.data?.pages.flat() ?? [];
 
   return (
-    <Screen wide inTabs>
-      <TopBar title={t('audit.title')} subtitle={t('audit.subtitle')} />
-      <View className="mb-4 flex-row flex-wrap">
-        <Chip label={t('audit.all')} selected={!category} onPress={() => setCategory(undefined)} />
-        {CATEGORIES.map((c) => (
-          <Chip key={c} label={t(`audit.categories.${c}`)} selected={category === c} onPress={() => setCategory(c)} />
-        ))}
-      </View>
+    <Screen
+      wide
+      inTabs
+      header={<TopBar title={t('audit.title')} subtitle={t('audit.subtitle')} />}
+      sticky={
+        // The filters stay at the top while the list scrolls.
+        <View className="mb-2 flex-row flex-wrap">
+          <Chip label={t('audit.all')} selected={!category} onPress={() => setCategory(undefined)} />
+          {CATEGORIES.map((c) => (
+            <Chip key={c} label={t(`audit.categories.${c}`)} selected={category === c} onPress={() => setCategory(c)} />
+          ))}
+        </View>
+      }
+    >
       <Card>
         {log.isPending ? <ActivityIndicator color={colors.accent} /> : null}
         {log.isSuccess && events.length === 0 ? <Text className="text-sm text-muted">{t('audit.empty')}</Text> : null}
