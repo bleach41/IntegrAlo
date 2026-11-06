@@ -19,6 +19,8 @@ const BROKER_PORT = 1885;
 /** Own topic prefix, so a platform running on the same broker does not register the test nodes. */
 const PREFIX = 'integralo-e2e';
 const PORT = 4199;
+/** Telemetry timeout of the core under test: short, so a silent node is detected quickly. */
+const SILENCE_MS = 8000;
 const API = `http://localhost:${PORT}/api`;
 const SIM_ID = 'sim-e2e002';
 const MUTE_ID = 'sim-mute01';
@@ -100,6 +102,7 @@ async function main(): Promise<void> {
     INTEGRALO_DB_PATH: join(workDir, 'e2e.sqlite'),
     INTEGRALO_MQTT_URL: BROKER,
     INTEGRALO_TOPIC_PREFIX: PREFIX,
+    INTEGRALO_TELEMETRY_TIMEOUT_MS: String(SILENCE_MS),
   });
   let sim: ChildProcess | undefined;
   let tank: ChildProcess | undefined;
@@ -261,6 +264,11 @@ async function main(): Promise<void> {
     const unconfirmed = await commandOutcome(muteCmd.data.id, 8000);
     check('command without answer ends as unconfirmed', unconfirmed?.status === 'unconfirmed' && unconfirmed.reason === 'ack_timeout',
       unconfirmed ? `${unconfirmed.resolvedAt - unconfirmed.sentAt} ms` : 'timeout');
+    // Its retained "online" must not keep it online for ever: silence means offline.
+    const silentOffline = await until(async () => (await http('GET', `/nodes/${MUTE_ID}`)).data.online === false, SILENCE_MS + 10000);
+    check('silent node marked offline despite a retained "online"', !!silentOffline);
+    const muteRefused = await http('POST', `/nodes/${MUTE_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } });
+    check('commands to an offline node are refused at once', muteRefused.status >= 400 && muteRefused.status < 500, `HTTP ${muteRefused.status}`);
 
     // P4 (partial): connection status
     const killed = Date.now();

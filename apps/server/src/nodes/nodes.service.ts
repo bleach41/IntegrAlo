@@ -73,8 +73,24 @@ export class NodesService {
     return approved;
   }
 
+  /** A reading arrived: the node is alive, whatever its last status said. */
   touch(id: string): void {
     this.database.db.prepare('UPDATE nodes SET last_seen = ? WHERE id = ?').run(Date.now(), id);
+    this.setOnline(id, true);
+  }
+
+  /**
+   * Changes the connection state and tells everyone. Besides the node's own status
+   * messages, the alarm watchdog uses it to mark offline a node that went silent: a
+   * retained "online" left in the broker by a node that died with the broker down would
+   * otherwise keep it online for ever, and commands sent to it would never be confirmed.
+   */
+  setOnline(id: string, online: boolean, reason?: string): void {
+    const node = this.find(id);
+    if (!node || node.online === online) return;
+    this.database.db.prepare('UPDATE nodes SET online = ?, last_seen = ? WHERE id = ?').run(online ? 1 : 0, Date.now(), id);
+    this.events.record(online ? 'node.online' : 'node.offline', id, 'system', reason ? { reason } : undefined);
+    this.bus.emit('node', this.get(id));
   }
 
   private onAnnounce(nodeId: string, payload: Buffer): void {
@@ -113,13 +129,8 @@ export class NodesService {
 
   private onStatus(nodeId: string, payload: Buffer): void {
     const result = NodeStatusSchema.safeParse(payload.toString('utf8'));
-    const node = this.find(nodeId);
-    if (!result.success || !node) return;
-    const online = result.data === 'online';
-    if (online === node.online) return;
-    this.database.db.prepare('UPDATE nodes SET online = ?, last_seen = ? WHERE id = ?').run(online ? 1 : 0, Date.now(), nodeId);
-    this.events.record(online ? 'node.online' : 'node.offline', nodeId, 'system');
-    this.bus.emit('node', this.get(nodeId));
+    if (!result.success) return;
+    this.setOnline(nodeId, result.data === 'online');
   }
 }
 

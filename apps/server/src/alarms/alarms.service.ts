@@ -192,8 +192,12 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
     const now = Date.now();
     for (const node of this.nodes.list()) {
       if (node.approval !== 'approved' || !node.online) continue;
-      const last = this.lastTelemetry.get(node.id) ?? this.startedAt;
-      if (now - last > this.config.telemetryTimeoutMs) this.raise(node.id, COMM_LOSS, null, 'no_telemetry');
+      // A node approved just now has had no chance to send anything yet.
+      const last = this.lastTelemetry.get(node.id) ?? Math.max(this.startedAt, node.approvedAt ?? 0);
+      if (now - last > this.config.telemetryTimeoutMs) {
+        this.raise(node.id, COMM_LOSS, null, 'no_telemetry');
+        this.nodes.setOnline(node.id, false, 'no_telemetry');
+      }
     }
   }
 
