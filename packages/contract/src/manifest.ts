@@ -119,11 +119,19 @@ export const SummaryDefSchema = z.object({
 });
 export type SummaryDef = z.infer<typeof SummaryDefSchema>;
 
+/**
+ * Icons a module may pick to be recognised at a glance. A closed list, so every client can
+ * draw them with its own icon set; a module without one gets a generic icon.
+ */
+export const MODULE_ICONS = ['thermometer', 'droplet', 'gauge', 'zap', 'fan', 'lightbulb', 'activity'] as const;
+export type ModuleIcon = (typeof MODULE_ICONS)[number];
+
 export const ModuleManifestSchema = z
   .object({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, 'version must be semver (x.y.z)'),
     label: LocalizedTextSchema.optional(),
+    icon: z.enum(MODULE_ICONS).optional(),
     variables: z.array(VariableDefSchema).min(1),
     summary: SummaryDefSchema.optional(),
     commands: z.array(CommandDefSchema).min(1),

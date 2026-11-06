@@ -12,6 +12,7 @@ import { useSession } from '@/features/auth/session.store';
 import { CommandForm } from '@/features/commands/CommandForm';
 import { GenericSummary } from '@/features/nodes/GenericSummary';
 import { NodeHeader } from '@/features/nodes/NodeCard';
+import { NodeManageCard } from '@/features/nodes/NodeManageCard';
 import { VariablesGrid } from '@/features/nodes/VariablesGrid';
 import { NodeTrends } from '@/features/telemetry/NodeTrends';
 import { NodeSynoptic } from '@/features/visual/NodeSynoptic';
@@ -64,7 +65,7 @@ export default function NodeDetailScreen() {
       <View className="lg:flex-row lg:items-start">
         <View className="lg:mr-4 lg:flex-[3]">
           <Card className="mb-4">
-            <NodeHeader node={node} />
+            <NodeHeader node={node} manifest={manifest} />
             {latest && manifest ? (
               <>
                 <View className="my-4">
@@ -117,6 +118,12 @@ export default function NodeDetailScreen() {
           {manifest && hasPermission(permissions, PERMISSIONS.alarmsConfigure) ? (
             <Section title={t('alarmConfig.title')}>
               <AlarmConfigCard nodeId={node.id} manifest={manifest} />
+            </Section>
+          ) : null}
+
+          {hasPermission(permissions, PERMISSIONS.nodesManage) ? (
+            <Section title={t('manage.title')}>
+              <NodeManageCard key={node.id} node={node} />
             </Section>
           ) : null}
         </View>

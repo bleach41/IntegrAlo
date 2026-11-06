@@ -22,7 +22,8 @@ export default function DashboardScreen() {
   const alarms = useOpenAlarms();
 
   const pending = nodes.data?.filter((n) => n.approval === 'pending') ?? [];
-  const approved = nodes.data?.filter((n) => n.approval === 'approved') ?? [];
+  // Online nodes first; the offline ones (often old boards) go to the end.
+  const approved = (nodes.data?.filter((n) => n.approval === 'approved') ?? []).sort((a, b) => Number(b.online) - Number(a.online));
   const manifestOf = (moduleId: string) => modules.data?.find((m) => m.id === moduleId);
   const alarmsOf = (nodeId: string) => alarms.data?.filter((a) => a.nodeId === nodeId && a.state !== 'closed').length ?? 0;
 

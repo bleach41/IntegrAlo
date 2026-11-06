@@ -2,6 +2,7 @@
   "id": "temperature",
   "version": "0.1.0",
   "label": { "es": "Temperatura", "en": "Temperature" },
+  "icon": "thermometer",
   "summary": { "primary": "temperature", "secondary": ["setpoint", "mode"] },
   "variables": [
     {

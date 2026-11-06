@@ -25,7 +25,7 @@ const en: typeof es = {
     empty: 'No events.',
     system: 'system',
     kinds: {
-      node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline' },
+      node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline', renamed: 'Node renamed', retired: 'Node removed' },
       command: {
         sent: 'Command sent',
         confirmed: 'Command confirmed',
@@ -126,10 +126,22 @@ const en: typeof es = {
     offline: 'Offline',
     noData: 'No readings yet',
     updatedAt: 'Updated at {{time}}',
+    lastReading: 'Last reading: {{time}}',
     alarms_one: '{{count}} alarm',
     alarms_other: '{{count}} alarms',
     firmware: 'Firmware {{fw}}',
     loadError: 'The nodes could not be loaded.',
+  },
+  manage: {
+    title: 'Node management',
+    name: 'Name',
+    saveName: 'Save name',
+    saved: 'Saved',
+    retire: 'Remove from the list',
+    retireHint: 'For a replaced board or one that no longer exists. Its history and audit log are kept; if it ever reconnects, it will wait for approval again.',
+    retireOnline: 'Only offline nodes can be removed.',
+    retireConfirm: 'Yes, remove',
+    cancel: 'Cancel',
   },
   settings: {
     title: 'Settings',

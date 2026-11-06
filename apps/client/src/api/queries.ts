@@ -228,3 +228,25 @@ export function useApproveNode() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.nodes }),
   });
 }
+
+export function useRenameNode(nodeId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api<NodeInfo>('PATCH', `/nodes/${nodeId}`, { name }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.nodes }),
+  });
+}
+
+/** Takes an offline node out of the list; its history is kept and it returns as pending if it reconnects. */
+export function useRetireNode(nodeId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<void>('POST', `/nodes/${nodeId}/retire`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.nodes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.openAlarms });
+    },
+  });
+}

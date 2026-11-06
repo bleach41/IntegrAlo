@@ -23,7 +23,7 @@ const es = {
     empty: 'No hay eventos.',
     system: 'sistema',
     kinds: {
-      node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea' },
+      node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea', renamed: 'Nodo renombrado', retired: 'Nodo retirado' },
       command: {
         sent: 'Orden enviada',
         confirmed: 'Orden confirmada',
@@ -124,10 +124,22 @@ const es = {
     offline: 'Fuera de línea',
     noData: 'Sin lecturas todavía',
     updatedAt: 'Actualizado a las {{time}}',
+    lastReading: 'Última lectura: {{time}}',
     alarms_one: '{{count}} alarma',
     alarms_other: '{{count}} alarmas',
     firmware: 'Firmware {{fw}}',
     loadError: 'No se pudieron cargar los nodos.',
+  },
+  manage: {
+    title: 'Gestión del nodo',
+    name: 'Nombre',
+    saveName: 'Guardar nombre',
+    saved: 'Guardado',
+    retire: 'Retirar de la lista',
+    retireHint: 'Para una placa sustituida o que ya no existe. No se borra su historial ni la auditoría; si vuelve a conectarse, aparecerá pendiente de aprobación.',
+    retireOnline: 'Solo se pueden retirar nodos fuera de línea.',
+    retireConfirm: 'Sí, retirar',
+    cancel: 'Cancelar',
   },
   settings: {
     title: 'Ajustes',

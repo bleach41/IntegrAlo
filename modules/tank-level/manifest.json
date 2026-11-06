@@ -2,6 +2,7 @@
   "id": "tank-level",
   "version": "0.1.0",
   "label": { "es": "Nivel de tanque", "en": "Tank level" },
+  "icon": "droplet",
   "summary": { "primary": "level", "secondary": ["pump", "mode"] },
   "variables": [
     {
