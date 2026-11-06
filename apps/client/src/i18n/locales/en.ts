@@ -14,6 +14,7 @@ const en: typeof es = {
     home: 'Home',
     alarms: 'Alarms',
     audit: 'Audit',
+    users: 'Users',
     settings: 'Settings',
   },
   audit: {
@@ -25,7 +26,7 @@ const en: typeof es = {
     empty: 'No events.',
     system: 'system',
     kinds: {
-      node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline', renamed: 'Node renamed', retired: 'Node removed' },
+      node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline', renamed: 'Node renamed', retired: 'Node removed', revoked: 'Node disconnected' },
       command: {
         sent: 'Command sent',
         confirmed: 'Command confirmed',
@@ -75,6 +76,7 @@ const en: typeof es = {
   },
   users: {
     title: 'Users',
+    subtitle: 'Accounts and access profiles',
     create: 'Create user',
     username: 'Username',
     password: 'Password',
@@ -139,7 +141,9 @@ const en: typeof es = {
     saved: 'Saved',
     retire: 'Remove from the list',
     retireHint: 'For a replaced board or one that no longer exists. Its history and audit log are kept; if it ever reconnects, it will wait for approval again.',
-    retireOnline: 'Only offline nodes can be removed.',
+    disconnect: 'Disconnect from the platform',
+    disconnectHint: 'Stops supervising it at once: its readings are not stored and no commands are sent. It goes back to pending and can be approved again. Its history is kept.',
+    disconnectConfirm: 'Yes, disconnect',
     retireConfirm: 'Yes, remove',
     cancel: 'Cancel',
   },

@@ -17,8 +17,7 @@ export function UsersCard() {
   const roleOptions = roles.map((r) => ({ value: r.id, label: roleLabel(t, r.id, r.name) }));
 
   return (
-    <Card className="mt-4">
-      <Text className="mb-4 text-sm font-medium uppercase tracking-wide text-muted">{t('users.title')}</Text>
+    <Card>
       {users.map((user) => (
         <UserRow key={user.id} user={user} roleOptions={roleOptions} />
       ))}

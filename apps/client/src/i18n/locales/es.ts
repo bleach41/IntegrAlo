@@ -12,6 +12,7 @@ const es = {
     home: 'Inicio',
     alarms: 'Alarmas',
     audit: 'Auditoría',
+    users: 'Usuarios',
     settings: 'Ajustes',
   },
   audit: {
@@ -23,7 +24,7 @@ const es = {
     empty: 'No hay eventos.',
     system: 'sistema',
     kinds: {
-      node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea', renamed: 'Nodo renombrado', retired: 'Nodo retirado' },
+      node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea', renamed: 'Nodo renombrado', retired: 'Nodo retirado', revoked: 'Nodo desconectado' },
       command: {
         sent: 'Orden enviada',
         confirmed: 'Orden confirmada',
@@ -73,6 +74,7 @@ const es = {
   },
   users: {
     title: 'Usuarios',
+    subtitle: 'Cuentas y perfiles de acceso',
     create: 'Crear usuario',
     username: 'Usuario',
     password: 'Contraseña',
@@ -137,7 +139,9 @@ const es = {
     saved: 'Guardado',
     retire: 'Retirar de la lista',
     retireHint: 'Para una placa sustituida o que ya no existe. No se borra su historial ni la auditoría; si vuelve a conectarse, aparecerá pendiente de aprobación.',
-    retireOnline: 'Solo se pueden retirar nodos fuera de línea.',
+    disconnect: 'Desconectar de la plataforma',
+    disconnectHint: 'Deja de supervisarlo al instante: no se guardan sus lecturas ni se le envían órdenes. Pasa a pendiente de aprobación y se puede volver a aprobar. No se borra su historial.',
+    disconnectConfirm: 'Sí, desconectar',
     retireConfirm: 'Sí, retirar',
     cancel: 'Cancelar',
   },

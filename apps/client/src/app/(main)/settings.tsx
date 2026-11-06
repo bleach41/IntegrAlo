@@ -8,7 +8,6 @@ import { PERMISSIONS, hasPermission } from '@integralo/contract';
 import { useSession } from '@/features/auth/session.store';
 import { PreferencesCard } from '@/features/preferences/PreferencesCard';
 import { NodeAccessCard } from '@/features/system/NodeAccessCard';
-import { UsersCard } from '@/features/users/UsersCard';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function SettingsScreen() {
@@ -55,7 +54,6 @@ export default function SettingsScreen() {
       <PreferencesCard />
       {/* Engineering sections, shown only with their permission (the core enforces it too). */}
       {hasPermission(user?.permissions ?? [], PERMISSIONS.nodeAccessRead) ? <NodeAccessCard /> : null}
-      {hasPermission(user?.permissions ?? [], PERMISSIONS.usersManage) ? <UsersCard /> : null}
     </Screen>
   );
 }

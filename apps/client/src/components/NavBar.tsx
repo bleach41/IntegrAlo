@@ -1,5 +1,5 @@
 import { PERMISSIONS } from '@integralo/contract';
-import { Bell, House, LucideIcon, ScrollText, Settings } from 'lucide-react-native';
+import { Bell, House, LucideIcon, ScrollText, Settings, Users } from 'lucide-react-native';
 import { TabTrigger, TabTriggerSlotProps } from 'expo-router/ui';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -9,9 +9,9 @@ import { Brand } from './ui';
 
 export interface TabDef {
   name: string;
-  href: '/' | '/alarms' | '/audit' | '/settings';
+  href: '/' | '/alarms' | '/audit' | '/users' | '/settings';
   icon: LucideIcon;
-  label: 'nav.home' | 'nav.alarms' | 'nav.audit' | 'nav.settings';
+  label: 'nav.home' | 'nav.alarms' | 'nav.audit' | 'nav.users' | 'nav.settings';
   /** Shown only to users with this permission. */
   permission?: string;
 }
@@ -21,6 +21,7 @@ export const TABS: TabDef[] = [
   { name: 'home', href: '/', icon: House, label: 'nav.home' },
   { name: 'alarms', href: '/alarms', icon: Bell, label: 'nav.alarms' },
   { name: 'audit', href: '/audit', icon: ScrollText, label: 'nav.audit', permission: PERMISSIONS.eventsRead },
+  { name: 'users', href: '/users', icon: Users, label: 'nav.users', permission: PERMISSIONS.usersManage },
   { name: 'settings', href: '/settings', icon: Settings, label: 'nav.settings' },
 ];
 

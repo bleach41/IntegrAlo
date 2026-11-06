@@ -7,9 +7,10 @@ import { useRenameNode, useRetireNode } from '@/api/queries';
 import { ErrorText, Field, SmallButton } from '@/components/ui';
 
 /**
- * Engineering only: rename a node and retire one that no longer exists (a replaced board,
- * a simulator that changed identity). Retiring deletes nothing and needs a second tap; an
- * online node cannot be retired.
+ * Engineering only: rename a node, and stop supervising it. Neither action deletes history,
+ * and both need a second tap:
+ * - online: "disconnect" — it loses its approval and waits, as pending, to be approved again;
+ * - offline: "remove from the list" — a replaced board; it returns only if it reconnects.
  */
 export function NodeManageCard({ node }: { node: NodeInfo }) {
   const { t } = useTranslation();
@@ -28,12 +29,12 @@ export function NodeManageCard({ node }: { node: NodeInfo }) {
         {rename.isSuccess && !changed ? <Text className="ml-3 text-xs text-accent">{t('manage.saved')}</Text> : null}
       </View>
 
-      <Text className="mb-1 text-sm font-medium text-ink">{t('manage.retire')}</Text>
-      <Text className="mb-3 text-xs leading-4 text-muted">{node.online ? t('manage.retireOnline') : t('manage.retireHint')}</Text>
-      {node.online ? null : confirming ? (
+      <Text className="mb-1 text-sm font-medium text-ink">{node.online ? t('manage.disconnect') : t('manage.retire')}</Text>
+      <Text className="mb-3 text-xs leading-4 text-muted">{node.online ? t('manage.disconnectHint') : t('manage.retireHint')}</Text>
+      {confirming ? (
         <View className="flex-row items-center">
           <SmallButton
-            label={t('manage.retireConfirm')}
+            label={node.online ? t('manage.disconnectConfirm') : t('manage.retireConfirm')}
             busy={retire.isPending}
             onPress={() =>
               // mutateAsync, not mutate's onSuccess: the realtime update unmounts this card
@@ -46,7 +47,7 @@ export function NodeManageCard({ node }: { node: NodeInfo }) {
           </View>
         </View>
       ) : (
-        <SmallButton label={t('manage.retire')} onPress={() => setConfirming(true)} />
+        <SmallButton label={node.online ? t('manage.disconnect') : t('manage.retire')} onPress={() => setConfirming(true)} />
       )}
     </View>
   );
