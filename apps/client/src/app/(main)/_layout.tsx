@@ -36,7 +36,10 @@ function SignedIn() {
       <View className={`flex-1 bg-canvas ${wide ? 'flex-row' : ''}`}>
         {wide ? <NavBar layout="side" alarmCount={unacknowledged} tabs={tabs} /> : null}
         <View className="flex-1">
-          <TabSlot />
+          {/* Its default container grows with the content (flex 1 0 auto): the screen would
+              be as tall as everything in it and never scroll. The home tab escaped this only
+              because its own stack bounds the height. */}
+          <TabSlot style={{ flex: 1, minHeight: 0 }} />
         </View>
         {wide ? null : <NavBar layout="bottom" alarmCount={unacknowledged} tabs={tabs} />}
       </View>
