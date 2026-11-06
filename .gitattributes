@@ -1,0 +1,2 @@
+# cmd needs CRLF (labels and goto misbehave with LF).
+*.cmd text eol=crlf

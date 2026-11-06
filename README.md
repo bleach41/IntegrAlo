@@ -49,7 +49,8 @@ Genera el paquete y `release/IntegrAlo-Setup-<versión>.exe`. El instalador, eje
 - copia el programa en `Program Files\IntegrAlo` y deja los datos en `%ProgramData%\IntegrAlo`, solo accesibles para el sistema y los administradores;
 - abre en el firewall los puertos 4100 (app) y 1883 (nodos) en redes privadas y de dominio, y en públicas solo si se marca;
 - ofrece detener el servicio Mosquitto de Windows si ya existe;
-- registra e inicia el servicio `IntegrAlo`, de inicio automático.
+- registra e inicia el servicio `IntegrAlo`, de inicio automático;
+- deja en el menú Inicio, carpeta IntegrAlo, tres accesos: «Panel del servidor IntegrAlo», «Iniciar servidor IntegrAlo» (inicia el servicio si está detenido y abre el panel) y «Detener servidor IntegrAlo» (parada ordenada). Iniciar y detener piden permiso de administrador solo para ese paso.
 
 Al desinstalar se conservan los datos, salvo que se pida borrarlos.
 

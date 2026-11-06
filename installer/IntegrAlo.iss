@@ -56,6 +56,10 @@ spanish.StoppingService=Deteniendo el servicio IntegrAlo…
 spanish.StartingService=Registrando e iniciando el servicio IntegrAlo…
 spanish.OpenPanel=Abrir el panel del servidor
 spanish.PanelShortcut=Panel del servidor IntegrAlo
+spanish.StartShortcut=Iniciar servidor IntegrAlo
+spanish.StartShortcutComment=Inicia el servicio IntegrAlo (pide permiso de administrador) y abre el panel del servidor
+spanish.StopShortcut=Detener servidor IntegrAlo
+spanish.StopShortcutComment=Detiene el servicio IntegrAlo en orden (pide permiso de administrador)
 spanish.ServiceFailed=No se pudo iniciar el servicio IntegrAlo (código %1). Revise los registros en %2.
 spanish.DeleteData=¿Borrar también los datos de IntegrAlo?%n%nSe eliminarían la base de datos (historial, usuarios, auditoría), la configuración del broker y la identidad del servidor, con la que los teléfonos vinculados lo reconocen.%n%nCarpeta: %1
 
@@ -73,6 +77,9 @@ Type: filesandordirs; Name: "{app}\modules"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; Start menu helpers to start and stop the service (relative to this script's folder).
+Source: "iniciar-servidor.cmd"; DestDir: "{app}\service"; Flags: ignoreversion
+Source: "detener-servidor.cmd"; DestDir: "{app}\service"; Flags: ignoreversion
 
 [Dirs]
 Name: "{commonappdata}\IntegrAlo"; Flags: uninsneveruninstall
@@ -83,7 +90,10 @@ Filename: "{app}\Panel del servidor.url"; Section: "InternetShortcut"; Key: "URL
 [Icons]
 ; (No shortcut to the logs folder: opening it from Explorer offers to grant the user
 ; permanent access to the protected data folder. The panel shows the recent log.)
-Name: "{autoprograms}\IntegrAlo\{cm:PanelShortcut}"; Filename: "{app}\Panel del servidor.url"
+Name: "{autoprograms}\IntegrAlo\{cm:PanelShortcut}"; Filename: "{app}\Panel del servidor.url"; IconFilename: "{app}\apps\client\dist\favicon.ico"
+; Starting or stopping a service needs administrator rights: each script asks (UAC) only for that step.
+Name: "{autoprograms}\IntegrAlo\{cm:StartShortcut}"; Filename: "{app}\service\iniciar-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{app}\apps\client\dist\favicon.ico"; Comment: "{cm:StartShortcutComment}"
+Name: "{autoprograms}\IntegrAlo\{cm:StopShortcut}"; Filename: "{app}\service\detener-servidor.cmd"; WorkingDir: "{app}\service"; IconFilename: "{sys}\shell32.dll"; IconIndex: 27; Comment: "{cm:StopShortcutComment}"
 
 [Run]
 ; Everything else (permissions, Mosquitto, firewall, service) runs from [Code], in order.
