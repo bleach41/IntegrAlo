@@ -26,6 +26,21 @@ interface SessionState {
 
 const SERVER_KEY = 'integralo.server';
 const TOKEN_KEY = 'integralo.token';
+/**
+ * Last known user of the saved token. Lets the app open with the session when the server
+ * cannot be reached (a power cut, the laptop restarting): screens show "offline" and retry,
+ * instead of asking to sign in again. Only an answer 401 from the server ends the session.
+ */
+const USER_KEY = 'integralo.user';
+
+async function savedUser(): Promise<SessionUser | null> {
+  try {
+    const raw = await storage.get(USER_KEY);
+    return raw ? (JSON.parse(raw) as SessionUser) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Session state: which server the app talks to and who is signed in.
@@ -51,11 +66,19 @@ export const useSession = create<SessionState>((set, get) => ({
       set({ needsSetup });
       if (token && !needsSetup) {
         const user = await apiRequest<SessionUser>(serverUrl, 'GET', '/auth/me', { token });
+        await storage.set(USER_KEY, JSON.stringify(user));
         set({ token, user });
       }
+      if (token && needsSetup) await forget();
     } catch (err) {
-      // An expired session is forgotten; an unreachable server keeps the saved address.
-      if (err instanceof ApiError && err.status === 401) await storage.set(TOKEN_KEY, null);
+      if (err instanceof ApiError && err.status === 401) {
+        // The server answered: the session expired or was closed.
+        await forget();
+      } else if (token) {
+        // The server did not answer: keep the session; queries retry until it is back.
+        const user = await savedUser();
+        if (user) set({ token, user });
+      }
     }
     set({ status: 'ready' });
   },
@@ -71,7 +94,7 @@ export const useSession = create<SessionState>((set, get) => ({
 
   async forgetServer() {
     await storage.set(SERVER_KEY, null);
-    await storage.set(TOKEN_KEY, null);
+    await forget();
     set({ serverUrl: null, token: null, user: null, needsSetup: false });
   },
 
@@ -89,6 +112,7 @@ export const useSession = create<SessionState>((set, get) => ({
     const { token } = await apiRequest<{ token: string }>(serverUrl, 'POST', '/auth/login', { body: { username, password } });
     const user = await apiRequest<SessionUser>(serverUrl, 'GET', '/auth/me', { token });
     await storage.set(TOKEN_KEY, token);
+    await storage.set(USER_KEY, JSON.stringify(user));
     set({ token, user });
   },
 
@@ -97,7 +121,12 @@ export const useSession = create<SessionState>((set, get) => ({
     if (serverUrl && token) {
       await apiRequest(serverUrl, 'POST', '/auth/logout', { token }).catch(() => undefined);
     }
-    await storage.set(TOKEN_KEY, null);
+    await forget();
     set({ token: null, user: null });
   },
 }));
+
+async function forget(): Promise<void> {
+  await storage.set(TOKEN_KEY, null);
+  await storage.set(USER_KEY, null);
+}
