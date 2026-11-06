@@ -1,4 +1,5 @@
 import { ApiError } from '@/api/client';
+import { IdentityMismatchError } from '@/features/pairing/identity';
 
 /**
  * Error messages are returned as translation keys (not text), so they are shown in the
@@ -8,6 +9,9 @@ export type MessageKey =
   | 'common.unexpectedError'
   | 'connect.unreachable'
   | 'connect.notIntegralo'
+  | 'connect.identityMismatch'
+  | 'connect.noNetwork'
+  | 'scan.notIntegralo'
   | 'login.invalid'
   | 'login.locked'
   | 'setup.alreadyDone'
@@ -23,6 +27,7 @@ export interface Message {
 }
 
 export function connectionError(err: unknown): Message {
+  if (err instanceof IdentityMismatchError) return { key: 'connect.identityMismatch' };
   if (err instanceof ApiError && err.status === 0) return { key: 'connect.unreachable' };
   if (err instanceof ApiError && (err.status === -1 || err.status === 404)) return { key: 'connect.notIntegralo' };
   if (err instanceof TypeError) return { key: 'connect.unreachable' }; // malformed address
