@@ -20,7 +20,7 @@ import type { ModuleManifest } from '@integralo/contract';
 
 /** A synoptic exists if the module has its own, or its summary variable declares a display range. */
 function hasSynoptic(manifest: ModuleManifest): boolean {
-  if (moduleViews[manifest.id]?.Synoptic) return true;
+  if (moduleViews[manifest.id]?.Visual) return true;
   const key = manifest.summary?.primary ?? manifest.variables[0].key;
   const variable = manifest.variables.find((v) => v.key === key);
   return variable?.type === 'number' && !!variable.displayRange;

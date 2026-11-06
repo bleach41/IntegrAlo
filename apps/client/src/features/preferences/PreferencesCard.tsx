@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { Card, Segmented } from '@/components/ui';
-import { LanguagePreference, ThemePreference, usePreferences } from './preferences.store';
+import { LanguagePreference, ThemePreference, VisualStyle, usePreferences } from './preferences.store';
 
-/** Theme and language selectors; changes apply immediately and are remembered. */
+/** Theme, language and synoptic style selectors; changes apply immediately and are remembered. */
 export function PreferencesCard() {
   const { t } = useTranslation();
-  const { theme, language, setTheme, setLanguage } = usePreferences();
+  const { theme, language, visualStyle, setTheme, setLanguage, setVisualStyle } = usePreferences();
 
   return (
     <Card className="mt-4">
@@ -30,6 +30,16 @@ export function PreferencesCard() {
           { value: 'system', label: t('preferences.system') },
           { value: 'es', label: t('preferences.es') },
           { value: 'en', label: t('preferences.en') },
+        ]}
+      />
+      <View className="h-4" />
+      <Text className="mb-2 text-sm font-medium text-muted">{t('preferences.visual')}</Text>
+      <Segmented<VisualStyle>
+        value={visualStyle}
+        onChange={setVisualStyle}
+        options={[
+          { value: 'flat', label: t('preferences.flat') },
+          { value: 'iso', label: t('preferences.iso') },
         ]}
       />
     </Card>
