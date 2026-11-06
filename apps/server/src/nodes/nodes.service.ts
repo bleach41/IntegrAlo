@@ -21,6 +21,7 @@ interface NodeRow {
   first_seen: number;
   last_seen: number;
   approved_at: number | null;
+  retired_at: number | null;
 }
 
 /**
@@ -37,14 +38,14 @@ export class NodesService {
     private readonly events: EventsService,
     private readonly registry: ModuleRegistryService,
     private readonly bus: EventBus,
-    mqtt: MqttService,
+    private readonly mqtt: MqttService,
   ) {
     mqtt.on('announce', (nodeId, payload) => this.onAnnounce(nodeId, payload));
     mqtt.on('status', (nodeId, payload) => this.onStatus(nodeId, payload));
   }
 
   list(): NodeInfo[] {
-    const rows = this.database.db.prepare('SELECT * FROM nodes ORDER BY first_seen').all() as unknown as NodeRow[];
+    const rows = this.database.db.prepare('SELECT * FROM nodes WHERE retired_at IS NULL ORDER BY first_seen').all() as unknown as NodeRow[];
     return rows.map(toInfo);
   }
 
@@ -71,6 +72,30 @@ export class NodesService {
     const approved = this.get(id);
     this.bus.emit('node', approved);
     return approved;
+  }
+
+  rename(id: string, name: string | null, actor: string): NodeInfo {
+    const node = this.get(id);
+    this.database.db.prepare('UPDATE nodes SET name = ? WHERE id = ?').run(name, id);
+    this.events.record('node.renamed', id, actor, { from: node.name, to: name });
+    const renamed = this.get(id);
+    this.bus.emit('node', renamed);
+    return renamed;
+  }
+
+  /**
+   * Takes a node out of the list without deleting anything: telemetry, commands and the
+   * audit log keep its history. It goes back to pending, so it stops being supervised (no
+   * telemetry stored, no alarms) and, if it ever reconnects, it shows up for approval again.
+   */
+  retire(id: string, actor: string): void {
+    const node = this.get(id);
+    if (node.online) throw new ConflictException(`node ${id} is online; only offline nodes can be retired`);
+    this.database.db.prepare("UPDATE nodes SET approval = 'pending', approved_at = NULL, retired_at = ? WHERE id = ?").run(Date.now(), id);
+    this.events.record('node.retired', id, actor, { name: node.name });
+    this.bus.emit('node', this.get(id));
+    // Otherwise its retained announce would bring it back as pending on every restart.
+    this.mqtt.clearRetained(id).catch((err) => this.logger.warn(`could not clear retained messages of ${id}: ${String(err)}`));
   }
 
   /** A reading arrived: the node is alive, whatever its last status said. */
@@ -120,8 +145,12 @@ export class NodesService {
       this.logger.log(`new node ${nodeId} (${announce.module}) pending approval`);
     } else {
       this.database.db
-        .prepare('UPDATE nodes SET module = ?, fw = ?, online = 1, last_seen = ? WHERE id = ?')
+        .prepare('UPDATE nodes SET module = ?, fw = ?, online = 1, last_seen = ?, retired_at = NULL WHERE id = ?')
         .run(announce.module, announce.fw, now, nodeId);
+      if (existing.retiredAt !== null) {
+        this.events.record('node.discovered', nodeId, 'system', { module: announce.module, fw: announce.fw, returned: true });
+        this.logger.log(`retired node ${nodeId} is back, pending approval`);
+      }
       if (!existing.online) this.events.record('node.online', nodeId, 'system');
     }
     this.bus.emit('node', this.get(nodeId));
@@ -145,5 +174,6 @@ function toInfo(row: NodeRow): NodeInfo {
     firstSeen: row.first_seen,
     lastSeen: row.last_seen,
     approvedAt: row.approved_at,
+    retiredAt: row.retired_at,
   };
 }

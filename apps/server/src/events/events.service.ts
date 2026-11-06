@@ -6,6 +6,8 @@ export type EventKind =
   | 'node.approved'
   | 'node.online'
   | 'node.offline'
+  | 'node.renamed'
+  | 'node.retired'
   | 'command.sent'
   | 'command.confirmed'
   | 'command.rejected'

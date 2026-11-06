@@ -151,7 +151,10 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private onNode(node: NodeInfo): void {
-    if (node.approval !== 'approved') return;
+    if (node.approval !== 'approved') {
+      if (node.retiredAt !== null) this.closeAll(node.id);
+      return;
+    }
     this.ensureConfigs(node);
     if (!node.online) this.raise(node.id, COMM_LOSS, null, 'offline');
   }
@@ -256,6 +259,22 @@ export class AlarmsService implements OnModuleInit, OnModuleDestroy {
     return this.database.db
       .prepare('SELECT * FROM alarms WHERE node_id = ? AND alarm_key = ? AND cleared_at IS NULL ORDER BY id DESC LIMIT 1')
       .get(nodeId, key) as AlarmRow | undefined;
+  }
+
+  /** A retired node is no longer supervised: its open occurrences are closed by "system". */
+  private closeAll(nodeId: string): void {
+    const now = Date.now();
+    const open = this.database.db
+      .prepare('SELECT id FROM alarms WHERE node_id = ? AND (cleared_at IS NULL OR acked_at IS NULL)')
+      .all(nodeId) as unknown as Array<{ id: number }>;
+    for (const { id } of open) {
+      this.database.db
+        .prepare("UPDATE alarms SET cleared_at = COALESCE(cleared_at, ?), acked_at = COALESCE(acked_at, ?), acked_by = COALESCE(acked_by, 'system') WHERE id = ?")
+        .run(now, now, id);
+      this.publish(id);
+    }
+    this.lastTelemetry.delete(nodeId);
+    for (const key of [...this.pendingSince.keys()]) if (key.startsWith(`${nodeId}:`)) this.pendingSince.delete(key);
   }
 
   /** The occurrence not yet closed (active, or cleared but unacknowledged). */

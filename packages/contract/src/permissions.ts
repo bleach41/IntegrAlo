@@ -8,6 +8,8 @@
 export const PERMISSIONS = {
   nodesRead: 'nodes.read',
   nodesApprove: 'nodes.approve',
+  /** Rename a node or retire it from the list (it comes back as pending if it reconnects). */
+  nodesManage: 'nodes.manage',
   telemetryRead: 'telemetry.read',
   commandsRead: 'commands.read',
   modulesRead: 'modules.read',

@@ -17,6 +17,8 @@ export interface NodeInfo {
   firstSeen: number;
   lastSeen: number;
   approvedAt: number | null;
+  /** Set while the node is retired from the list (only seen through GET /nodes/:id). */
+  retiredAt: number | null;
 }
 
 export interface TelemetrySample {

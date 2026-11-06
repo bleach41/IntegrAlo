@@ -144,4 +144,9 @@ export const MIGRATIONS: string[] = [
   WHERE acked_at IS NULL AND cleared_at IS NOT NULL
     AND id < (SELECT MAX(m.id) FROM alarms m WHERE m.node_id = alarms.node_id AND m.alarm_key = alarms.alarm_key AND m.acked_at IS NULL);
   `,
+  `
+  -- A retired node (a replaced board, a simulator that changed identity) leaves the list
+  -- but keeps its history; it goes back to pending and reappears if it ever reconnects.
+  ALTER TABLE nodes ADD COLUMN retired_at INTEGER;
+  `,
 ];

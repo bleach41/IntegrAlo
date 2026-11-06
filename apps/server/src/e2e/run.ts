@@ -270,6 +270,31 @@ async function main(): Promise<void> {
     const muteRefused = await http('POST', `/nodes/${MUTE_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } });
     check('commands to an offline node are refused at once', muteRefused.status >= 400 && muteRefused.status < 500, `HTTP ${muteRefused.status}`);
 
+    // Node management: rename, then retire the dead node; it comes back pending if it reconnects
+    const renamed = await http('PATCH', `/nodes/${MUTE_ID}`, { name: 'Placa vieja' });
+    check('node renamed', renamed.status === 200 && renamed.data.name === 'Placa vieja');
+    const retired = await http('POST', `/nodes/${MUTE_ID}/retire`, {});
+    const listed = (await http('GET', '/nodes')).data as Array<{ id: string }>;
+    check('retired node leaves the list', retired.status === 204 && !listed.some((n) => n.id === MUTE_ID));
+    const muteAlarms = ((await http('GET', '/alarms')).data as Array<{ nodeId: string; state: string }>).filter((a) => a.nodeId === MUTE_ID && a.state !== 'closed');
+    check('alarms of a retired node are closed', muteAlarms.length === 0, `${muteAlarms.length} open`);
+    // Its retained announce is gone: a fresh subscriber (a restarted core) receives nothing.
+    const retainedLeft = await new Promise<boolean>((resolve) => {
+      const viewer = mqtt.connect(BROKER, { clientId: `integralo-e2e-viewer-${process.pid}` });
+      const timer = setTimeout(() => { viewer.end(true); resolve(false); }, 1500);
+      viewer.on('message', (_topic, payload) => {
+        if (payload.length > 0) { clearTimeout(timer); viewer.end(true); resolve(true); }
+      });
+      viewer.subscribe(nodeTopic(MUTE_ID, 'announce', PREFIX));
+    });
+    check('retired node leaves no retained announce behind', !retainedLeft);
+    await probe.publishAsync(nodeTopic(MUTE_ID, 'announce', PREFIX), JSON.stringify({ nodeId: MUTE_ID, module: 'temperature', fw: 'mute', uptimeMs: 0 }), { qos: 1, retain: true });
+    const returned = await until(async () => {
+      const { data } = await http('GET', '/nodes');
+      return (data as Array<{ id: string; approval: string }>).find((n) => n.id === MUTE_ID && n.approval === 'pending');
+    }, 5000);
+    check('retired node reappears as pending when it reconnects', !!returned);
+
     // P4 (partial): connection status
     const killed = Date.now();
     sim.kill('SIGKILL');

@@ -72,6 +72,17 @@ export class MqttService implements OnApplicationBootstrap, OnModuleDestroy {
     });
   }
 
+  /**
+   * Deletes what the broker keeps for a node (its last announce and status): an empty
+   * retained message replaces them. A node that connects again announces itself anew.
+   */
+  async clearRetained(nodeId: string): Promise<void> {
+    if (!this.client?.connected) throw new Error('broker not connected');
+    for (const kind of ['announce', 'status'] as const) {
+      await this.client.publishAsync(nodeTopic(nodeId, kind, this.config.topicPrefix), '', { qos: 1, retain: true });
+    }
+  }
+
   private dispatch(topic: string, payload: Buffer): void {
     const parsed = parseNodeTopic(topic, this.config.topicPrefix);
     if (!parsed) return;
