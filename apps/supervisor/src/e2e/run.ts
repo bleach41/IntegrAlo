@@ -101,6 +101,18 @@ async function main(): Promise<void> {
       return r.ok;
     }, 5000);
     check('node with the node account registered through the authenticated broker', setup.ok && !!registered);
+
+    const auth = { headers: { authorization: `Bearer ${token}` } };
+    const access = (await (await fetch(`${API}/system/node-access`, auth)).json()) as {
+      configured: boolean;
+      port?: number;
+      username?: string;
+      password?: string;
+    };
+    check('engineers get the node connection data from the core',
+      access.configured && access.port === BROKER_PORT && access.username === settings.nodes.username && access.password === settings.nodes.password);
+    const audit = (await (await fetch(`${API}/events?limit=50`, auth)).json()) as Array<{ kind: string; actor: string }>;
+    check('reading node connection data is audited', audit.some((e) => e.kind === 'system.node_access_viewed' && e.actor === 'admin'));
     await node.endAsync();
 
     const page = await fetch(`http://127.0.0.1:${HTTP_PORT}/nodes/abc`).then((r) => r.text()).catch(() => '');

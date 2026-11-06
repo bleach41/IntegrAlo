@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { nodeTopic } from '@integralo/contract';
+import { startTestBroker } from '@integralo/testing';
 import mqtt from 'mqtt';
 
 /**
@@ -12,7 +13,9 @@ import mqtt from 'mqtt';
  * confirmed / rejected / unconfirmed commands, connection status and audit events.
  * Usage: pnpm --filter @integralo/server e2e  (needs Mosquitto on INTEGRALO_MQTT_URL)
  */
-const BROKER = process.env.INTEGRALO_MQTT_URL ?? 'mqtt://localhost:1883';
+/** Own temporary broker (see @integralo/testing); set at the start of main(). */
+let BROKER = '';
+const BROKER_PORT = 1885;
 /** Own topic prefix, so a platform running on the same broker does not register the test nodes. */
 const PREFIX = 'integralo-e2e';
 const PORT = 4199;
@@ -75,6 +78,8 @@ function spawnNode(script: string, args: string[], env: NodeJS.ProcessEnv = {}):
 }
 
 async function main(): Promise<void> {
+  const broker = await startTestBroker(BROKER_PORT);
+  BROKER = broker.url;
   const workDir = mkdtempSync(join(tmpdir(), 'integralo-core-e2e-'));
   const serverScript = join(__dirname, '..', 'main.js');
   const simScript = join(__dirname, '..', '..', '..', 'sim-node', 'dist', 'index.js');
@@ -303,6 +308,11 @@ async function main(): Promise<void> {
       (await http('POST', `/nodes/${TANK_ID}/commands`, { type: 'set_mode', payload: { mode: 'auto' } }, userAgain)).status === 201 &&
         (await http('POST', `/nodes/${TANK_ID}/commands`, { type: 'set_pump', payload: { pump: 'off' } }, userAgain)).status === 403);
 
+    // Node connection data: engineering only; without a supervisor there is no node account
+    check('user profile cannot read node connection data', (await http('GET', '/system/node-access', undefined, userAgain)).status === 403);
+    check('node connection data reports "not configured" without a supervisor',
+      (await http('GET', '/system/node-access')).data.configured === false);
+
     // RF-06: audit trail
     const kinds = new Set(((await http('GET', `/events?nodeId=${SIM_ID}`)).data as any[]).map((e) => e.kind));
     const expected = ['node.discovered', 'node.approved', 'node.online', 'node.offline', 'command.sent', 'command.confirmed', 'command.rejected'];
@@ -322,6 +332,7 @@ async function main(): Promise<void> {
     await clearRetained();
     await probe.endAsync();
     rmSync(workDir, { recursive: true, force: true });
+    await broker.stop();
   }
 
   console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);

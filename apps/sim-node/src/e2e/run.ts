@@ -11,6 +11,7 @@ import {
   TelemetryMessageSchema,
   nodeTopic,
 } from '@integralo/contract';
+import { startTestBroker } from '@integralo/testing';
 import mqtt, { MqttClient } from 'mqtt';
 
 /**
@@ -19,7 +20,9 @@ import mqtt, { MqttClient } from 'mqtt';
  * identification, telemetry, confirmed commands, duplicates, rejections and Last Will.
  * Usage: pnpm e2e  (broker URL in INTEGRALO_MQTT_URL, default mqtt://localhost:1883)
  */
-const BROKER = process.env.INTEGRALO_MQTT_URL ?? 'mqtt://localhost:1883';
+/** Own temporary broker (see @integralo/testing); set at the start of main(). */
+let BROKER = '';
+const BROKER_PORT = 1886;
 const NODE_ID = 'sim-e2e001';
 /** Own topic prefix, so a platform running on the same broker does not see the test node. */
 const PREFIX = 'integralo-e2e';
@@ -83,6 +86,8 @@ function startNode(stateDir: string): ChildProcess {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main(): Promise<void> {
+  const broker = await startTestBroker(BROKER_PORT);
+  BROKER = broker.url;
   const stateDir = mkdtempSync(join(tmpdir(), 'integralo-e2e-'));
   const probe = await Probe.connect();
   await probe.clearRetained();
@@ -142,6 +147,7 @@ async function main(): Promise<void> {
     await probe.clearRetained();
     await probe.client.endAsync();
     rmSync(stateDir, { recursive: true, force: true });
+    await broker.stop();
   }
 
   console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) failed.`);
