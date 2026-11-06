@@ -8,9 +8,10 @@
 //   apps/supervisor|server production code, each with its own flat node_modules
 //   apps/client/dist       web version of the app (optional: only if it was exported)
 //   modules/<id>/          module manifests
+//   service/               Windows service wrapper (WinSW) and its configuration
 //   IntegrAlo.cmd          starts the supervisor with the data in %ProgramData%\IntegrAlo
 //
-// Usage: pnpm package   [--mosquitto-dir "C:/Program Files/mosquitto"]
+// Usage: pnpm package   [--mosquitto-dir "C:/Program Files/mosquitto"] [--winsw WinSW.NET461.exe]
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +19,13 @@ import { parseArgs } from 'node:util';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'release', 'IntegrAlo');
-const { values } = parseArgs({ options: { 'mosquitto-dir': { type: 'string', default: process.env.INTEGRALO_MOSQUITTO_DIR ?? 'C:/Program Files/mosquitto' } } });
+const { values } = parseArgs({
+  options: {
+    'mosquitto-dir': { type: 'string', default: process.env.INTEGRALO_MOSQUITTO_DIR ?? 'C:/Program Files/mosquitto' },
+    /** WinSW.NET461.exe, the Windows service wrapper; by default looked for in .tools/. */
+    winsw: { type: 'string' },
+  },
+});
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const step = (text) => console.log(`- ${text}`);
@@ -150,8 +157,22 @@ copyApp('server');
 
 const web = join(ROOT, 'apps', 'client', 'dist');
 if (existsSync(join(web, 'index.html'))) {
-  cpSync(web, join(OUT, 'apps', 'client', 'dist'), { recursive: true });
-  step(`web client (exported ${statSync(join(web, 'index.html')).mtime.toISOString().slice(0, 10)})`);
+  // The export keeps expo-router's own icons (error and site-map screens, which the app does
+  // not use) under assets/__node_modules/.pnpm/<very long name>/…: paths over Windows' 260
+  // characters once installed, which the installer cannot handle. They are left out.
+  const skipped = [];
+  cpSync(web, join(OUT, 'apps', 'client', 'dist'), {
+    recursive: true,
+    filter: (p) => {
+      const inside = relative(web, p).split(sep);
+      if (inside[0] === 'assets' && inside[1] === '__node_modules') {
+        if (inside.length === 2) skipped.push(p);
+        return false;
+      }
+      return true;
+    },
+  });
+  step(`web client (exported ${statSync(join(web, 'index.html')).mtime.toISOString().slice(0, 10)})${skipped.length ? '; left out expo-router internal icons (paths too long)' : ''}`);
 } else {
   step('web client not exported: the package serves only the mobile app');
 }
@@ -161,6 +182,21 @@ for (const entry of readdirSync(join(ROOT, 'modules'), { withFileTypes: true }))
   if (entry.isDirectory() && existsSync(manifest)) cpSync(manifest, join(OUT, 'modules', entry.name, 'manifest.json'));
 }
 step(`modules: ${readdirSync(join(OUT, 'modules')).join(', ')}`);
+
+// Windows service wrapper (WinSW, MIT): the exe and its configuration share a name.
+const winsw = values.winsw ?? [join(ROOT, '.tools', 'downloads', 'WinSW.NET461.exe'), join(ROOT, '.tools', 'WinSW.NET461.exe')].find(existsSync);
+if (winsw && existsSync(winsw)) {
+  const serviceOut = join(OUT, 'service');
+  mkdirSync(serviceOut);
+  cpSync(winsw, join(serviceOut, 'IntegrAlo-service.exe'));
+  cpSync(join(ROOT, 'installer', 'IntegrAlo-service.xml'), join(serviceOut, 'IntegrAlo-service.xml'));
+  const license = join(dirname(winsw), 'WinSW-LICENSE.txt');
+  if (existsSync(license)) cpSync(license, join(serviceOut, 'WinSW-LICENSE.txt'));
+  else console.warn('  warning: WinSW-LICENSE.txt not found next to WinSW (the MIT licence must be shipped)');
+  step(`service wrapper from ${winsw}`);
+} else {
+  step('service wrapper not found (.tools/downloads/WinSW.NET461.exe or --winsw): package without service');
+}
 
 // Launcher, for running the package by hand (the Windows service uses the same command).
 writeFileSync(
@@ -174,6 +210,21 @@ writeFileSync(
 );
 const version = readJson(join(ROOT, 'package.json')).version;
 writeFileSync(join(OUT, 'VERSION'), `${version}\n`);
+
+// Third-party software shipped in the package, with the licence each one is used under.
+writeFileSync(
+  join(OUT, 'TERCEROS.txt'),
+  [
+    'IntegrAlo incluye los siguientes programas de terceros, sin modificar:',
+    '',
+    `- Node.js ${process.version} (node/): licencia MIT, texto en node/LICENSE.`,
+    '- Eclipse Mosquitto (mosquitto/): doble licencia EPL-2.0 / EDL-1.0, textos en mosquitto/epl-v20 y mosquitto/edl-v10.',
+    '- Microsoft Visual C++ runtime, vcruntime140.dll (mosquitto/): redistribuible junto al programa que lo usa.',
+    '- WinSW 2.12.0 (service/): licencia MIT, texto en service/WinSW-LICENSE.txt.',
+    '- Bibliotecas de Node.js en apps/*/node_modules: cada una con su licencia dentro de su carpeta.',
+    '',
+  ].join('\r\n'),
+);
 
 let bytes = 0;
 const walk = (dir) => {

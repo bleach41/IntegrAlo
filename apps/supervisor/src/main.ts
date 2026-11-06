@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { findMosquittoDir, prepareBroker } from './broker';
+import { ChildrenRecord, stopLeftovers } from './leftovers';
 import { isPortFree, lanAddresses, waitForPort } from './net';
 import { printPairingWhenReady } from './pairing';
 import { startPanel } from './panel';
@@ -48,6 +49,37 @@ const log = (line: string) => {
 };
 
 async function main(): Promise<void> {
+  // Registered first: a stop request (Ctrl+C from the Windows service, closing the console)
+  // can arrive while the platform is still starting. Whatever already started is then stopped
+  // in order, and the start does not go on.
+  let broker: ManagedProcess | undefined;
+  let core: ManagedProcess | undefined;
+  let panel: { close(): void } | null = null;
+  let stopping = false;
+  const shutdown = async () => {
+    if (stopping) return;
+    stopping = true;
+    log('[supervisor] stopping…');
+    panel?.close();
+    await core?.stop(); // the core first: it still needs the broker to say goodbye
+    await broker?.stop();
+    process.exit(0);
+  };
+  process.on('SIGINT', () => void shutdown());
+  process.on('SIGTERM', () => void shutdown());
+  // Closing the console window: Windows leaves a few seconds, enough for the orderly stop.
+  process.on('SIGHUP', () => void shutdown());
+  // Any other way out (an unexpected error): the core and the broker do not outlive it.
+  process.on('exit', () => {
+    core?.killNow();
+    broker?.killNow();
+  });
+  // When started by another program (a Windows service wrapper, the e2e test): on Windows
+  // killing the supervisor would leave its children running, so it is asked to stop instead.
+  process.on('message', (message: unknown) => {
+    if ((message as { type?: string } | null)?.type === 'shutdown') void shutdown();
+  });
+
   const dataDir = resolve(values['data-dir']);
   const { settings, created } = loadOrCreateSettings(dataDir, {
     httpPort: values['http-port'] ? Number(values['http-port']) : undefined,
@@ -55,6 +87,9 @@ async function main(): Promise<void> {
   });
   log(`[supervisor] data directory ${dataDir}${created ? ' (first run: settings created)' : ''}`);
 
+  await stopLeftovers(dataDir, log);
+  if (stopping) return;
+  const children = new ChildrenRecord(dataDir);
   for (const [what, port] of [['broker', settings.brokerPort], ['core', settings.httpPort]] as const) {
     if (!(await isPortFree(port))) {
       log(`[supervisor] port ${port} for the ${what} is already in use.`);
@@ -62,19 +97,22 @@ async function main(): Promise<void> {
       process.exit(1);
     }
   }
+  if (stopping) return;
 
   const mosquittoDir = findMosquittoDir(ROOT);
   log(`[supervisor] MQTT broker from ${mosquittoDir}`);
   const configFile = prepareBroker(settings, join(dataDir, 'broker'), mosquittoDir);
 
-  const broker = new ManagedProcess({
+  const brokerCommand = join(mosquittoDir, 'mosquitto.exe');
+  broker = new ManagedProcess({
     name: 'broker',
-    command: join(mosquittoDir, 'mosquitto.exe'),
+    command: brokerCommand,
     args: ['-c', configFile],
     log,
+    onStarted: (pid) => children.started('broker', pid, brokerCommand),
   });
   const webDir = values['web-dir'];
-  const core = new ManagedProcess({
+  core = new ManagedProcess({
     name: 'core',
     command: process.execPath,
     args: ['--disable-warning=ExperimentalWarning', join(ROOT, 'apps', 'server', 'dist', 'main.js')],
@@ -93,6 +131,7 @@ async function main(): Promise<void> {
       INTEGRALO_NODE_MQTT_PASSWORD: settings.nodes.password,
     },
     log,
+    onStarted: (pid) => children.started('core', pid, process.execPath),
   });
 
   broker.start();
@@ -101,13 +140,14 @@ async function main(): Promise<void> {
     await broker.stop();
     process.exit(1);
   }
+  if (stopping) return;
   core.start();
   printWelcome(settings.httpPort, settings.brokerPort, settings.nodes);
   void printPairingWhenReady(settings.httpPort, lanAddresses(), log, (line) => console.log(line));
 
   // The panel is a convenience: if its port is taken, the platform still runs without it.
   const panelPort = values['panel-port'] ? Number(values['panel-port']) : settings.httpPort + 1;
-  const panel = await startPanel({
+  const started = await startPanel({
     port: panelPort,
     httpPort: settings.httpPort,
     brokerPort: settings.brokerPort,
@@ -122,29 +162,17 @@ async function main(): Promise<void> {
     log(`[supervisor] the server panel could not start on port ${panelPort}: ${err.message}`);
     return null;
   });
+  if (stopping) {
+    started?.close();
+    return;
+  }
+  panel = started;
   if (panel) {
     const url = `http://127.0.0.1:${panelPort}`;
     log(`[supervisor]   Server panel:  ${url}  (only from this computer)`);
     if (values['open-panel']) openInBrowser(url);
   }
 
-  let stopping = false;
-  const shutdown = async () => {
-    if (stopping) return;
-    stopping = true;
-    log('[supervisor] stopping…');
-    panel?.close();
-    await core.stop(); // the core first: it still needs the broker to say goodbye
-    await broker.stop();
-    process.exit(0);
-  };
-  process.on('SIGINT', () => void shutdown());
-  process.on('SIGTERM', () => void shutdown());
-  // When started by another program (a Windows service wrapper, the e2e test): on Windows
-  // killing the supervisor would leave its children running, so it is asked to stop instead.
-  process.on('message', (message: unknown) => {
-    if ((message as { type?: string } | null)?.type === 'shutdown') void shutdown();
-  });
 }
 
 function printWelcome(httpPort: number, brokerPort: number, nodes: { username: string; password: string }): void {

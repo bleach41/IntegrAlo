@@ -30,8 +30,33 @@ pnpm build
 pnpm package
 ```
 
-Genera `release/IntegrAlo`: Node.js, Mosquitto, el supervisor, el núcleo, la versión web y los manifiestos, sin depender del monorepo ni de programas instalados. `IntegrAlo.cmd` lo arranca con los datos en `%ProgramData%\IntegrAlo`. La misma prueba extremo a extremo del supervisor se ejecuta contra el paquete con:
+Genera `release/IntegrAlo`: Node.js, Mosquitto, el supervisor, el núcleo, la versión web y los manifiestos, sin depender del monorepo ni de programas instalados. `IntegrAlo.cmd` lo arranca con los datos en `%ProgramData%\IntegrAlo`. La misma prueba extremo a extremo del supervisor se ejecuta contra el paquete (la ruta debe ser absoluta, porque la prueba corre desde `apps/supervisor`) con:
 
 ```bash
-INTEGRALO_E2E_PACKAGE=release/IntegrAlo pnpm --filter @integralo/supervisor e2e
+INTEGRALO_E2E_PACKAGE="$(pwd -W)/release/IntegrAlo" pnpm --filter @integralo/supervisor e2e
 ```
+
+## Servicio de Windows e instalador
+
+Herramientas, fuera del repositorio, en `.tools/`: WinSW 2.12.0 (`.tools/downloads/WinSW.NET461.exe` y su `WinSW-LICENSE.txt`) e Inno Setup 6 (`.tools/InnoSetup`).
+
+```bash
+pnpm installer
+```
+
+Genera el paquete y `release/IntegrAlo-Setup-<versión>.exe`. El instalador, ejecutado como administrador:
+
+- copia el programa en `Program Files\IntegrAlo` y deja los datos en `%ProgramData%\IntegrAlo`, solo accesibles para el sistema y los administradores;
+- abre en el firewall los puertos 4100 (app) y 1883 (nodos) en redes privadas y de dominio, y en públicas solo si se marca;
+- ofrece detener el servicio Mosquitto de Windows si ya existe;
+- registra e inicia el servicio `IntegrAlo`, de inicio automático.
+
+Al desinstalar se conservan los datos, salvo que se pida borrarlos.
+
+Para comprobar el servicio sin instalarlo (arranque, parada ordenada por Ctrl+C y registros), en otros puertos y con datos temporales:
+
+```bash
+pnpm test:service
+```
+
+Sin permisos de administrador hace una prueba rápida con `test` de WinSW: arranca el servicio, lo detiene al segundo y comprueba la parada por Ctrl+C, los registros y que no quede nada en marcha. Desde una terminal abierta como administrador hace la prueba completa con `testwait`: además comprueba que el núcleo y el broker quedan enlazados, la carpeta de datos, el panel y el orden de parada. La prueba nunca abre ventanas de control de cuentas (UAC).

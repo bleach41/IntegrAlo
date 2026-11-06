@@ -34,11 +34,19 @@ async function bootstrap(): Promise<void> {
 function handleShutdownRequests(app: INestApplication): void {
   const armTimeout = () => setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, armTimeout);
-  process.on('message', (message: unknown) => {
-    if ((message as { type?: string } | null)?.type !== 'shutdown') return;
+  let closing = false;
+  const close = () => {
+    if (closing) return;
+    closing = true;
     armTimeout();
     void app.close().then(() => process.exit(0));
+  };
+  process.on('message', (message: unknown) => {
+    if ((message as { type?: string } | null)?.type === 'shutdown') close();
   });
+  // The supervisor's channel closed without a "shutdown": the supervisor itself is gone
+  // (ended by force). The core stops too, instead of running on without anyone watching it.
+  process.on('disconnect', close);
 }
 
 /**

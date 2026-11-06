@@ -75,9 +75,14 @@ async function main(): Promise<void> {
   const dataDir = mkdtempSync(join(tmpdir(), 'integralo-supervisor-e2e-'));
   const env = { ...process.env };
   if (PACKAGE) delete env.INTEGRALO_MOSQUITTO_DIR;
+  const supervisorCommand = PACKAGE ? join(PACKAGE, 'node', 'node.exe') : process.execPath;
+  const supervisorArgs = [
+    PACKAGE ? join(PACKAGE, 'apps', 'supervisor', 'dist', 'main.js') : join(__dirname, '..', 'main.js'),
+    '--data-dir', dataDir, '--broker-port', String(BROKER_PORT), '--http-port', String(HTTP_PORT), '--panel-port', String(PANEL_PORT),
+  ];
   const supervisor: ChildProcess = spawn(
-    PACKAGE ? join(PACKAGE, 'node', 'node.exe') : process.execPath,
-    [PACKAGE ? join(PACKAGE, 'apps', 'supervisor', 'dist', 'main.js') : join(__dirname, '..', 'main.js'), '--data-dir', dataDir, '--broker-port', String(BROKER_PORT), '--http-port', String(HTTP_PORT), '--panel-port', String(PANEL_PORT)],
+    supervisorCommand,
+    supervisorArgs,
     { env, stdio: process.env.E2E_VERBOSE ? ['ignore', 'inherit', 'inherit', 'ipc'] : ['ignore', 'ignore', 'ignore', 'ipc'] },
   );
   if (PACKAGE) console.log(`Testing the package in ${PACKAGE}`);
@@ -189,6 +194,22 @@ async function main(): Promise<void> {
     await sleep(500);
     check('orderly stop ends the supervisor and frees both ports',
       code === 0 && listeningPid(HTTP_PORT) === null && listeningPid(BROKER_PORT) === null && listeningPid(PANEL_PORT) === null, `exit ${code}`);
+
+    // Supervisor ended by force (no chance to stop anything): the core notices and stops by
+    // itself; the broker cannot, and the next start ends it before checking the ports.
+    const forced = spawn(supervisorCommand, supervisorArgs, { env, stdio: 'ignore' });
+    await until(async () => (await health()).broker === 'connected', 40_000);
+    const brokerBefore = listeningPid(BROKER_PORT);
+    process.kill(forced.pid!); // TerminateProcess on Windows
+    const coreGone = await until(async () => listeningPid(HTTP_PORT) === null, 10_000);
+    check('core stops by itself when the supervisor is ended by force', !!coreGone);
+    const again: ChildProcess = spawn(supervisorCommand, supervisorArgs, { env, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+    const recovered = await until(async () => (await health()).broker === 'connected', 40_000);
+    const brokerAfter = listeningPid(BROKER_PORT);
+    check('next start ends the leftover broker and starts normally', !!brokerBefore && !!recovered && brokerAfter !== brokerBefore,
+      `broker pid ${brokerBefore} → ${brokerAfter}`);
+    again.send({ type: 'shutdown' });
+    await Promise.race([new Promise((r) => again.once('exit', r)), sleep(15_000)]);
   } finally {
     if (supervisor.exitCode === null) supervisor.kill();
     for (const port of [HTTP_PORT, BROKER_PORT]) {

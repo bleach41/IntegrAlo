@@ -1,6 +1,7 @@
 node_modules/
 dist/
 release/
+.tools/
 *.log
 .env
 *.sqlite

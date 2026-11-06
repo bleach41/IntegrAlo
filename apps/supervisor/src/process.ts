@@ -8,6 +8,8 @@ export interface ManagedOptions {
   /** Use an IPC channel and ask the child to stop with {"type":"shutdown"} (Windows has no SIGTERM). */
   ipcShutdown?: boolean;
   log: (line: string) => void;
+  /** Called with the process ID on every start (see leftovers.ts). */
+  onStarted?: (pid: number) => void;
 }
 
 const MIN_BACKOFF_MS = 1000;
@@ -61,6 +63,10 @@ export class ManagedProcess {
       env: { ...process.env, ...env },
       stdio: ipcShutdown ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
+      // Outside the supervisor's console: a Ctrl+C (the console's, or the one the Windows
+      // service sends to stop) reaches only the supervisor, which then stops the core and
+      // the broker in order, instead of every process dying at once and looking like a crash.
+      detached: true,
     });
     this.child = child;
     const forward = (chunk: Buffer) => {
@@ -71,6 +77,18 @@ export class ManagedProcess {
     child.on('error', (err) => log(`[${name}] failed to start: ${err.message}`));
     child.on('exit', (code, signal) => this.onExit(code, signal));
     log(`[supervisor] ${name} started (pid ${child.pid})`);
+    if (child.pid) this.options.onStarted?.(child.pid);
+  }
+
+  /**
+   * Last resort when the supervisor itself is ending without an orderly stop: the children
+   * run outside its console (see start), so they would otherwise outlive it and keep the ports.
+   */
+  killNow(): void {
+    this.stopping = true;
+    clearTimeout(this.restartTimer);
+    const child = this.child;
+    if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
   }
 
   /** Stops the process: orderly first, forced after a timeout. */

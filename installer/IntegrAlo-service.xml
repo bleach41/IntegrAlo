@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  IntegrAlo as a Windows service (RNF-06), run by WinSW 2.12 (MIT licence): Node.js cannot
+  talk to the Windows service manager by itself, so this small wrapper starts the supervisor
+  when the computer starts (no one needs to sign in) and stops it when the service stops.
+  %BASE% is the folder of the wrapper (<install folder>\service).
+-->
+<service>
+  <id>IntegrAlo</id>
+  <name>IntegrAlo</name>
+  <description>Plataforma IntegrAlo de supervisión y control: broker MQTT y núcleo, vigilados por el supervisor.</description>
+
+  <executable>%BASE%\..\node\node.exe</executable>
+  <arguments>"%BASE%\..\apps\supervisor\dist\main.js" --data-dir "%ProgramData%\IntegrAlo"</arguments>
+  <workingdirectory>%BASE%\..</workingdirectory>
+  <!-- Plain text in the log files (the core's logger otherwise writes console colors). -->
+  <env name="NO_COLOR" value="1"/>
+
+  <!-- Starts with Windows, a little after the network is up. -->
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+
+  <!--
+    Orderly stop: Ctrl+C to the supervisor FIRST (it then stops the core and the broker in
+    order, as when pressing Ctrl+C in its console); only what is still running after the
+    timeout is ended by force. The supervisor needs about 2 s; 20 s leaves room.
+  -->
+  <stopparentprocessfirst>true</stopparentprocessfirst>
+  <stoptimeout>20 sec</stoptimeout>
+
+  <!--
+    The supervisor restarts the broker and the core itself; these rules are for the rare
+    case that the supervisor stops: Windows starts it again after 10 s, then 30 s.
+  -->
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <!-- What the supervisor prints, in files of 1 MB, keeping the last 5. -->
+  <logpath>%ProgramData%\IntegrAlo\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>1024</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

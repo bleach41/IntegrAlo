@@ -14,6 +14,8 @@
     "sim-node": "pnpm --filter @integralo/sim-node start",
     "simulate": "pnpm --filter @integralo/sim-node simulate",
     "e2e": "pnpm -r --workspace-concurrency=1 --if-present e2e",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "installer": "node scripts/package.mjs && node scripts/installer.mjs",
+    "test:service": "node scripts/test-service.mjs"
   }
 }
