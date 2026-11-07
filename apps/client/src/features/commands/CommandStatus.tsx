@@ -12,7 +12,8 @@ const STATUS_LINE_HEIGHT = 18;
 
 /**
  * Live state of the last command sent from a form (RF-04: no command stays undefined), in a
- * line of fixed height that is always reserved, so nothing on screen moves when it changes.
+ * line that is always reserved, so nothing on screen moves when it changes; only a message too
+ * long for one line (a rejection reason on a phone) takes a second line rather than being cut.
  * - sending: a pulsing dot and "Sending to the node…";
  * - confirmed: green with the round-trip time, and after a few seconds a quiet grey trace
  *   ("Confirmed at 13:05 · 13 ms") that stays until the next command, so the node's answer is
@@ -74,15 +75,10 @@ export function CommandStatus({
   const shown = useCrossfade(message);
   const iconColor = shown.message?.quiet ? colors.muted : colors.accent;
   return (
-    <View style={{ height: STATUS_LINE_HEIGHT }}>
+    <View style={{ minHeight: STATUS_LINE_HEIGHT }} className="justify-center">
       {shown.message ? (
         <Animated.View
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: align === 'center' ? 'center' : 'flex-start',
@@ -91,7 +87,11 @@ export function CommandStatus({
         >
           {shown.message.icon === 'check' ? <Check size={12} color={iconColor} strokeWidth={2.5} /> : null}
           {shown.message.icon === 'dot' ? <PulseDot color={colors.muted} /> : null}
-          <Text className={`text-xs ${shown.message.tone} ${shown.message.icon ? 'ml-1' : ''}`} numberOfLines={1}>
+          <Text
+            className={`flex-shrink text-xs ${shown.message.tone} ${shown.message.icon ? 'ml-1' : ''}`}
+            style={{ textAlign: align }}
+            numberOfLines={2}
+          >
             {shown.message.text}
           </Text>
         </Animated.View>
