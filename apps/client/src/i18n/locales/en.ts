@@ -24,6 +24,13 @@ const en: typeof es = {
     categories: { node: 'Nodes', command: 'Commands', alarm: 'Alarms', user: 'Users', system: 'System' },
     loadMore: 'Load more',
     empty: 'No events.',
+    emptyDay: 'No events on this day.',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    chooseDay: 'Choose a day',
+    previousDay: 'Previous day',
+    nextDay: 'Next day',
+    wholeHistory: 'Whole history',
     system: 'system',
     kinds: {
       node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline', renamed: 'Node renamed', retired: 'Node removed', revoked: 'Node disconnected' },

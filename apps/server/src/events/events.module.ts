@@ -9,6 +9,9 @@ const ListQuerySchema = z.object({
   nodeId: z.string().optional(),
   category: z.enum(EVENT_CATEGORIES).optional(),
   beforeId: z.coerce.number().int().positive().optional(),
+  // Time window in epoch ms, [from, to): the client sends the bounds of a local day.
+  from: z.coerce.number().int().nonnegative().optional(),
+  to: z.coerce.number().int().nonnegative().optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(100),
 });
 

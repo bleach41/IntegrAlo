@@ -1,20 +1,26 @@
 import { localize, type AuditCategory, type AuditEvent } from '@integralo/contract';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { useAuditLog, useModules, useNodes } from '@/api/queries';
+import { localDay, nextLocalDay, previousLocalDay, useAuditLog, useModules, useNodes } from '@/api/queries';
 import { TopBar } from '@/components/TopBar';
 import { Card, Screen, SmallButton } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 
 const CATEGORIES: AuditCategory[] = ['node', 'command', 'alarm', 'user', 'system'];
 
-/** Audit log (RF-06), engineering only: newest first, filtered by category, paged backwards. */
+/**
+ * Audit log (RF-06), engineering only: newest first, filtered by category and by day (today by
+ * default, or the whole history), paged backwards.
+ */
 export default function AuditScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const [category, setCategory] = useState<AuditCategory | undefined>();
-  const log = useAuditLog(category);
+  // Local midnight of the day shown; undefined = whole history.
+  const [day, setDay] = useState<number | undefined>(() => localDay(Date.now()));
+  const log = useAuditLog(category, day);
   const events = log.data?.pages.flat() ?? [];
 
   return (
@@ -29,12 +35,13 @@ export default function AuditScreen() {
           {CATEGORIES.map((c) => (
             <Chip key={c} label={t(`audit.categories.${c}`)} selected={category === c} onPress={() => setCategory(c)} />
           ))}
+          <DayPicker day={day} onChange={setDay} />
         </View>
       }
     >
       <Card>
         {log.isPending ? <ActivityIndicator color={colors.accent} /> : null}
-        {log.isSuccess && events.length === 0 ? <Text className="text-sm text-muted">{t('audit.empty')}</Text> : null}
+        {log.isSuccess && events.length === 0 ? <Text className="text-sm text-muted">{t(day === undefined ? 'audit.empty' : 'audit.emptyDay')}</Text> : null}
         {events.map((event, i) => (
           <EventRow key={event.id} event={event} first={i === 0} />
         ))}
@@ -45,6 +52,53 @@ export default function AuditScreen() {
         ) : null}
       </Card>
     </Screen>
+  );
+}
+
+/** «‹ Today ›» to go back and forth day by day, plus «Whole history». */
+function DayPicker({ day, onChange }: { day: number | undefined; onChange: (day: number | undefined) => void }) {
+  const { t, i18n } = useTranslation();
+  const { colors } = useTheme();
+  const today = localDay(Date.now());
+  const shown = day ?? today;
+  const canGoForward = day !== undefined && day < today;
+  const label =
+    day === undefined
+      ? t('audit.chooseDay')
+      : day === today
+        ? t('audit.today')
+        : day === previousLocalDay(today)
+          ? t('audit.yesterday')
+          : new Date(day).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return (
+    <View className="w-full flex-row flex-wrap items-center">
+      <View className={`mb-2 mr-2 flex-row items-center rounded-full border ${day === undefined ? 'border-line' : 'border-accent bg-accent/15'}`}>
+        <Pressable
+          onPress={() => onChange(day === undefined ? today : previousLocalDay(shown))}
+          accessibilityRole="button"
+          accessibilityLabel={t('audit.previousDay')}
+          hitSlop={6}
+          className="rounded-full px-2 py-1.5 active:bg-line"
+        >
+          <ChevronLeft size={16} color={day === undefined ? colors.muted : colors.accent} />
+        </Pressable>
+        <Pressable onPress={() => onChange(shown)} accessibilityRole="button" className="py-1.5">
+          <Text className={`min-w-24 text-center text-xs font-medium ${day === undefined ? 'text-muted' : 'text-accent'}`}>{label}</Text>
+        </Pressable>
+        <Pressable
+          onPress={canGoForward ? () => onChange(nextLocalDay(shown)) : undefined}
+          disabled={!canGoForward}
+          accessibilityRole="button"
+          accessibilityLabel={t('audit.nextDay')}
+          accessibilityState={{ disabled: !canGoForward }}
+          hitSlop={6}
+          className={`rounded-full px-2 py-1.5 active:bg-line ${canGoForward ? '' : 'opacity-30'}`}
+        >
+          <ChevronRight size={16} color={day === undefined ? colors.muted : colors.accent} />
+        </Pressable>
+      </View>
+      <Chip label={t('audit.wholeHistory')} selected={day === undefined} onPress={() => onChange(undefined)} />
+    </View>
   );
 }
 

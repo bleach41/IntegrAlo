@@ -60,9 +60,10 @@ export class EventsService {
 
   /**
    * Newest first. `category` filters by the kind prefix (users also include setup and roles);
-   * `beforeId` pages backwards, so a client can load older events in blocks.
+   * `beforeId` pages backwards, so a client can load older events in blocks; `from` (inclusive)
+   * and `to` (exclusive), in epoch ms, limit the time window.
    */
-  list(options: { nodeId?: string; category?: EventCategory; beforeId?: number; limit: number }): AuditEvent[] {
+  list(options: { nodeId?: string; category?: EventCategory; beforeId?: number; from?: number; to?: number; limit: number }): AuditEvent[] {
     const where: string[] = [];
     const params: Array<string | number> = [];
     if (options.nodeId) {
@@ -77,6 +78,14 @@ export class EventsService {
     if (options.beforeId !== undefined) {
       where.push('id < ?');
       params.push(options.beforeId);
+    }
+    if (options.from !== undefined) {
+      where.push('at >= ?');
+      params.push(options.from);
+    }
+    if (options.to !== undefined) {
+      where.push('at < ?');
+      params.push(options.to);
     }
     const sql = `SELECT * FROM events ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT ?`;
     const rows = this.database.db.prepare(sql).all(...params, options.limit) as unknown as Array<{

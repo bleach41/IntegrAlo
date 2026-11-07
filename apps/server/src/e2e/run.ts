@@ -374,12 +374,21 @@ async function main(): Promise<void> {
     const expected = ['node.discovered', 'node.approved', 'node.online', 'node.offline', 'command.sent', 'command.confirmed', 'command.rejected'];
     const missing = expected.filter((k) => !kinds.has(k));
     check('audit log records the whole sequence', missing.length === 0, missing.length ? `missing ${missing.join(', ')}` : `${kinds.size} kinds`);
-    const nodeEvents = (await http('GET', `/events?nodeId=${SIM_ID}`)).data as any[];
+    const nodeEvents = (await http('GET', `/events?nodeId=${SIM_ID}&limit=1000`)).data as any[];
     check('reconnection does not register the node again', nodeEvents.filter((e) => e.kind === 'node.discovered').length === 1);
     const actors = new Set(nodeEvents.filter((e) => e.kind === 'command.sent' || e.kind === 'node.approved').map((e) => e.actor));
     check('audit log names the user behind each action', actors.has('admin') && actors.has('tony'), [...actors].join(', '));
     const all = JSON.stringify((await http('GET', '/events?limit=1000')).data);
     check('audit log never contains passwords', !all.includes('tony-e2e-pass') && !all.includes('admin-e2e-pass'));
+    const sorted = [...nodeEvents].sort((a, b) => a.at - b.at);
+    const mid = sorted[Math.floor(sorted.length / 2)].at;
+    const fromMid = (await http('GET', `/events?nodeId=${SIM_ID}&limit=1000&from=${mid}`)).data as any[];
+    const toMid = (await http('GET', `/events?nodeId=${SIM_ID}&limit=1000&to=${mid}`)).data as any[];
+    check(
+      'audit log filters by time window',
+      fromMid.length > 0 && fromMid.every((e) => e.at >= mid) && toMid.every((e) => e.at < mid) && fromMid.length + toMid.length === nodeEvents.length,
+      `${toMid.length} before + ${fromMid.length} from`,
+    );
   } finally {
     sim?.kill('SIGKILL');
     tank?.kill('SIGKILL');

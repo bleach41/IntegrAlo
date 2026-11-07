@@ -22,6 +22,13 @@ const es = {
     categories: { node: 'Nodos', command: 'Órdenes', alarm: 'Alarmas', user: 'Usuarios', system: 'Sistema' },
     loadMore: 'Cargar más',
     empty: 'No hay eventos.',
+    emptyDay: 'No hay eventos este día.',
+    today: 'Hoy',
+    yesterday: 'Ayer',
+    chooseDay: 'Elegir día',
+    previousDay: 'Día anterior',
+    nextDay: 'Día siguiente',
+    wholeHistory: 'Todo el historial',
     system: 'sistema',
     kinds: {
       node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea', renamed: 'Nodo renombrado', retired: 'Nodo retirado', revoked: 'Nodo desconectado' },

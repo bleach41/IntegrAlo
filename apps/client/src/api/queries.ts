@@ -196,22 +196,49 @@ export function useUpdateUser() {
 
 const AUDIT_PAGE = 50;
 
-/** Audit log, newest first, loaded in pages of 50 going backwards. */
-export function useAuditLog(category: AuditCategory | undefined) {
+/**
+ * Audit log, newest first, loaded in pages of 50 going backwards. `day` (local midnight, epoch ms)
+ * limits it to that day; without it the whole history is listed.
+ */
+export function useAuditLog(category: AuditCategory | undefined, day?: number) {
   const api = useApi();
+  const end = day === undefined ? undefined : nextLocalDay(day);
   return useInfiniteQuery({
-    queryKey: ['audit', category ?? 'all'],
+    queryKey: ['audit', category ?? 'all', day ?? 'all'],
     initialPageParam: undefined as number | undefined,
     queryFn: ({ pageParam }) => {
       // Built by hand: URLSearchParams on phones (React Native) does not implement set().
       const params = [`limit=${AUDIT_PAGE}`];
       if (category) params.push(`category=${encodeURIComponent(category)}`);
+      if (day !== undefined && end !== undefined) params.push(`from=${day}`, `to=${end}`);
       if (pageParam !== undefined) params.push(`beforeId=${pageParam}`);
       return api<AuditEvent[]>('GET', `/events?${params.join('&')}`);
     },
     getNextPageParam: (page) => (page.length === AUDIT_PAGE ? page[page.length - 1].id : undefined),
-    refetchInterval: 15_000,
+    // A past day no longer changes; only the whole history and today get new events.
+    refetchInterval: end === undefined || end > Date.now() ? 15_000 : false,
   });
+}
+
+/** Local midnight of the day containing `at`. */
+export function localDay(at: number): number {
+  const d = new Date(at);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** Local midnight of the following day (a day is not always 24 h: daylight saving). */
+export function nextLocalDay(day: number): number {
+  const d = new Date(day);
+  d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
+/** Local midnight of the previous day. */
+export function previousLocalDay(day: number): number {
+  const d = new Date(day);
+  d.setDate(d.getDate() - 1);
+  return d.getTime();
 }
 
 /** Fetched on demand only (each read is audited by the core). */
