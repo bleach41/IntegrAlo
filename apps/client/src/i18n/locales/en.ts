@@ -32,6 +32,23 @@ const en: typeof es = {
     nextDay: 'Next day',
     wholeHistory: 'Whole history',
     system: 'system',
+    details: {
+      latency: 'answered in {{ms}} ms',
+      rejected: 'reason: {{reason}}',
+      noAnswer: 'no answer in {{s}} s',
+      lateConfirmed: 'arrived confirmed',
+      lateRejected: 'arrived rejected',
+      threshold: 'threshold {{value}}',
+      deadband: 'deadband {{value}}',
+      delay: 'delay {{s}} s',
+      enabled: 'enabled',
+      disabled: 'disabled',
+      role: 'profile {{role}}',
+      userDisabled: 'disabled',
+      userEnabled: 'enabled again',
+      passwordChanged: 'password changed',
+      attempt: 'attempt {{n}}',
+    },
     kinds: {
       node: { discovered: 'New node detected', approved: 'Node approved', online: 'Node online', offline: 'Node offline', renamed: 'Node renamed', retired: 'Node removed', revoked: 'Node disconnected' },
       command: {

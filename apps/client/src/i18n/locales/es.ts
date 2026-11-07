@@ -30,6 +30,23 @@ const es = {
     nextDay: 'Día siguiente',
     wholeHistory: 'Todo el historial',
     system: 'sistema',
+    details: {
+      latency: 'respondió en {{ms}} ms',
+      rejected: 'motivo: {{reason}}',
+      noAnswer: 'sin respuesta en {{s}} s',
+      lateConfirmed: 'llegó confirmada',
+      lateRejected: 'llegó rechazada',
+      threshold: 'umbral {{value}}',
+      deadband: 'banda muerta {{value}}',
+      delay: 'retardo {{s}} s',
+      enabled: 'activada',
+      disabled: 'desactivada',
+      role: 'perfil {{role}}',
+      userDisabled: 'desactivado',
+      userEnabled: 'reactivado',
+      passwordChanged: 'contraseña cambiada',
+      attempt: 'intento {{n}}',
+    },
     kinds: {
       node: { discovered: 'Nodo nuevo detectado', approved: 'Nodo aprobado', online: 'Nodo en línea', offline: 'Nodo fuera de línea', renamed: 'Nodo renombrado', retired: 'Nodo retirado', revoked: 'Nodo desconectado' },
       command: {

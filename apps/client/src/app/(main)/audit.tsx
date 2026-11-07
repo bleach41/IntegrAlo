@@ -1,4 +1,4 @@
-import { localize, type AuditCategory, type AuditEvent } from '@integralo/contract';
+import { type AuditCategory, type AuditEvent } from '@integralo/contract';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { localDay, nextLocalDay, previousLocalDay, useAuditLog, useModules, useNodes } from '@/api/queries';
 import { TopBar } from '@/components/TopBar';
 import { Card, Screen, SmallButton } from '@/components/ui';
+import { describeEvent } from '@/features/audit/describe';
 import { SEVERITY_TOKEN, eventStyle } from '@/features/audit/eventStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -133,9 +134,7 @@ function EventRow({ event, first }: { event: AuditEvent; first: boolean }) {
   const { icon: Icon, severity } = eventStyle(event.kind);
   const token = SEVERITY_TOKEN[severity];
   const manifest = useModules().data?.find((m) => m.id === node?.module);
-  const alarmName = (key: string) =>
-    key === 'commLoss' ? t('alarms.commLoss') : localize(manifest?.alarms.find((a) => a.key === key)?.label, i18n.language, key);
-  const detail = describe(event, alarmName);
+  const detail = describeEvent(event, { t, lang: i18n.language, manifest });
 
   return (
     <View className={`flex-row items-center py-2.5 ${first ? '' : 'border-t border-line'}`}>
@@ -156,41 +155,4 @@ function EventRow({ event, first }: { event: AuditEvent; first: boolean }) {
       </View>
     </View>
   );
-}
-
-/** Short human summary of the event detail; internal ids are left out. */
-function describe(event: AuditEvent, alarmName: (key: string) => string): string {
-  const d = event.detail ?? {};
-  const pick = (...keys: string[]) =>
-    keys
-      .filter((k) => d[k] !== undefined && d[k] !== null)
-      .map((k) => (typeof d[k] === 'object' ? JSON.stringify(d[k]) : String(d[k])))
-      .join(' ');
-  switch (event.kind) {
-    case 'command.sent':
-      return pick('type', 'payload');
-    case 'command.confirmed':
-      return d.latencyMs !== undefined ? `${d.latencyMs} ms` : '';
-    case 'command.rejected':
-      return pick('reason');
-    case 'alarm.raised':
-      return [typeof d.key === 'string' ? alarmName(d.key) : '', pick('value')].filter(Boolean).join(' ');
-    case 'alarm.configured':
-      return [
-        typeof d.key === 'string' ? alarmName(d.key) : '',
-        JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k]) => k !== 'key'))),
-      ]
-        .filter(Boolean)
-        .join(' ');
-    case 'node.approved':
-      // The approved name is already shown as the node's name.
-      return '';
-    case 'user.created':
-    case 'user.updated':
-      return pick('username', 'roleId');
-    case 'user.login_failed':
-      return d.attempt !== undefined ? `#${d.attempt}` : '';
-    default:
-      return '';
-  }
 }
