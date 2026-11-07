@@ -27,10 +27,11 @@ pnpm check:manifests
 
 ```bash
 pnpm build
+pnpm --filter @integralo/client export:web
 pnpm package
 ```
 
-Genera `release/IntegrAlo`: Node.js, Mosquitto, el supervisor, el núcleo, la versión web y los manifiestos, sin depender del monorepo ni de programas instalados. `IntegrAlo.cmd` lo arranca con los datos en `%ProgramData%\IntegrAlo`. La misma prueba extremo a extremo del supervisor se ejecuta contra el paquete (la ruta debe ser absoluta, porque la prueba corre desde `apps/supervisor`) con:
+`export:web` exporta la versión web a `apps/client/dist` y copia antes el lector de QR (`zxing_reader.wasm`), para que la web no lo descargue de Internet. Genera `release/IntegrAlo`: Node.js, Mosquitto, el supervisor, el núcleo, la versión web y los manifiestos, sin depender del monorepo ni de programas instalados. `IntegrAlo.cmd` lo arranca con los datos en `%ProgramData%\IntegrAlo`. La misma prueba extremo a extremo del supervisor se ejecuta contra el paquete (la ruta debe ser absoluta, porque la prueba corre desde `apps/supervisor`) con:
 
 ```bash
 INTEGRALO_E2E_PACKAGE="$(pwd -W)/release/IntegrAlo" pnpm --filter @integralo/supervisor e2e

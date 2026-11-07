@@ -9,6 +9,7 @@ import { Button, Card, ErrorText, Screen } from '@/components/ui';
 import { ApiError, apiRequest, normalizeServerUrl } from '@/api/client';
 import { Message, connectionError } from '@/features/auth/errors';
 import { useSession } from '@/features/auth/session.store';
+import { cameraUnavailableReason } from '@/features/pairing/qrReader';
 import { useTheme } from '@/theme/ThemeProvider';
 
 /**
@@ -23,6 +24,9 @@ export default function ScanScreen() {
   const connect = useSession((s) => s.connect);
   const [error, setError] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
+  // Web: the browser may not give the camera at all (page opened by a network address over
+  // HTTP); then the screen says so instead of asking for a permission that cannot be granted.
+  const noCamera = cameraUnavailableReason();
   // The camera reports the same code many times per second: handle one at a time.
   const handling = useRef(false);
 
@@ -62,7 +66,12 @@ export default function ScanScreen() {
         <Text className="mb-1 text-xl font-semibold text-ink">{t('scan.title')}</Text>
         <Text className="mb-4 text-sm leading-5 text-muted">{t('scan.hint')}</Text>
         <ErrorText message={error} />
-        {!permission ? (
+        {noCamera ? (
+          <>
+            <Text className="mb-4 text-sm leading-5 text-muted">{t(noCamera === 'insecure' ? 'scan.insecure' : 'scan.noCamera')}</Text>
+            <Button label={t('common.back')} onPress={() => router.back()} />
+          </>
+        ) : !permission ? (
           <ActivityIndicator color={colors.accent} />
         ) : !permission.granted ? (
           <>

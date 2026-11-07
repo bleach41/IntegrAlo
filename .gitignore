@@ -14,3 +14,6 @@ release/
 *.csv
 .vscode/
 .DS_Store
+
+# QR reader WebAssembly, copied from node_modules (apps/client/scripts/copy-zxing-wasm.mjs)
+apps/client/public/zxing_reader.wasm

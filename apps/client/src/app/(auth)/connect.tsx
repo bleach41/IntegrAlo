@@ -76,8 +76,9 @@ export default function ConnectScreen() {
           </View>
         ) : null}
 
-        {phone ? (
-          <>
+        {/* The three ways, on the phone and on the web (where the QR needs a camera the browser
+            allows: see the scan screen). */}
+        <>
             <Option icon={<QrCode size={20} color={colors.accent} />} title={t('connect.scan')} hint={t('connect.scanHint')} onPress={() => router.push('/scan')} />
             <Option
               icon={searching ? <ActivityIndicator color={colors.accent} /> : <Radar size={20} color={colors.accent} />}
@@ -114,8 +115,7 @@ export default function ConnectScreen() {
               </View>
             ) : null}
             <Text className="mb-2 mt-1 text-xs uppercase tracking-wide text-muted">{t('connect.orType')}</Text>
-          </>
-        ) : null}
+        </>
 
         <Field
           label={t('connect.address')}
