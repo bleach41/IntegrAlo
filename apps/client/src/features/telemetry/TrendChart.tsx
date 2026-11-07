@@ -165,7 +165,10 @@ export function TrendChart({
             )}
 
             {series.map((s) =>
-              segments(envelope(s.points, bucketMs), step).map((segment, i) => (
+              // Gaps are found on the readings themselves and only then is each stretch reduced:
+              // the envelope leaves its two points of a bucket close together, and the next
+              // bucket's farther on, which read as a gap and cut steep stretches into dashes.
+              segments(s.points, step).map((stretch, i) => [envelope(stretch, bucketMs), i] as const).map(([segment, i]) => (
                 <Polyline
                   key={`${s.key}${i}`}
                   points={segment.map(([time, v]) => `${x(time).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
