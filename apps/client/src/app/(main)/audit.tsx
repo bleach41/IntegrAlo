@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { localDay, nextLocalDay, previousLocalDay, useAuditLog, useModules, useNodes } from '@/api/queries';
 import { TopBar } from '@/components/TopBar';
 import { Card, Screen, SmallButton } from '@/components/ui';
+import { SEVERITY_TOKEN, eventStyle } from '@/features/audit/eventStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 
 const CATEGORIES: AuditCategory[] = ['node', 'command', 'alarm', 'user', 'system'];
@@ -118,6 +119,9 @@ function Chip({ label, selected, onPress, inline }: { label: string; selected: b
   );
 }
 
+/** Circle behind each event icon; written out in full so the style compiler sees the classes. */
+const TINT = { accent: 'bg-accent/15', danger: 'bg-danger/15', warning: 'bg-warning/15', muted: 'bg-line' } as const;
+
 function EventRow({ event, first }: { event: AuditEvent; first: boolean }) {
   const { t, i18n } = useTranslation();
   const node = useNodes().data?.find((n) => n.id === event.nodeId);
@@ -125,23 +129,31 @@ function EventRow({ event, first }: { event: AuditEvent; first: boolean }) {
   const title = i18n.exists(kindKey) ? t(kindKey as 'audit.title') : event.kind;
   const when = new Date(event.at).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'medium' });
   const actor = event.actor === 'system' ? t('audit.system') : event.actor;
-  const tone = event.kind.endsWith('failed') || event.kind.endsWith('rejected') || event.kind === 'alarm.raised' ? 'text-warning' : 'text-ink';
+  const { colors } = useTheme();
+  const { icon: Icon, severity } = eventStyle(event.kind);
+  const token = SEVERITY_TOKEN[severity];
   const manifest = useModules().data?.find((m) => m.id === node?.module);
   const alarmName = (key: string) =>
     key === 'commLoss' ? t('alarms.commLoss') : localize(manifest?.alarms.find((a) => a.key === key)?.label, i18n.language, key);
   const detail = describe(event, alarmName);
 
   return (
-    <View className={`py-2.5 ${first ? '' : 'border-t border-line'}`}>
-      <View className="flex-row items-baseline justify-between">
-        <Text className={`flex-1 pr-3 text-sm font-medium ${tone}`}>{title}</Text>
-        <Text className="text-xs text-muted">{when}</Text>
+    <View className={`flex-row items-center py-2.5 ${first ? '' : 'border-t border-line'}`}>
+      {/* Colour = what it means (went well, failed, needs attention, record); icon = which event. */}
+      <View className={`mr-3 h-8 w-8 items-center justify-center rounded-full ${TINT[token]}`}>
+        <Icon size={16} color={colors[token]} strokeWidth={2} />
       </View>
-      <Text className="mt-0.5 text-xs text-muted">
-        {actor}
-        {event.nodeId ? ` · ${node?.name ?? event.nodeId}` : ''}
-        {detail ? ` · ${detail}` : ''}
-      </Text>
+      <View className="flex-1">
+        <View className="flex-row items-baseline justify-between">
+          <Text className="flex-1 pr-3 text-sm font-medium text-ink">{title}</Text>
+          <Text className="text-xs text-muted">{when}</Text>
+        </View>
+        <Text className="mt-0.5 text-xs text-muted">
+          {actor}
+          {event.nodeId ? ` · ${node?.name ?? event.nodeId}` : ''}
+          {detail ? ` · ${detail}` : ''}
+        </Text>
+      </View>
     </View>
   );
 }
