@@ -298,17 +298,19 @@ export function TrendChart({
         <View style={{ height }} />
       )}
 
+      {/* Two fixed columns: the layout does not depend on the values, so a longer value (0 % →
+          100 %) cannot push an item to a new row and change the height of the card. */}
       <View className={legend ? 'mt-2 flex-row flex-wrap' : 'hidden'}>
         {series.map((s) => {
           const last = s.points[s.points.length - 1];
           return (
-            <View key={s.key} className="mb-1 mr-4 flex-row items-center">
+            <View key={s.key} className="mb-1 flex-row items-center pr-2" style={{ width: '50%' }}>
               {s.dashed ? (
                 <View className="mr-1.5 h-0.5 w-3" style={{ backgroundColor: s.color }} />
               ) : (
                 <View className="mr-1.5 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
               )}
-              <Text className="text-xs text-muted">
+              <Text className="flex-shrink text-xs text-muted" numberOfLines={1}>
                 {s.label}
                 {last ? `: ${withUnit(last[1])}` : ''}
               </Text>
@@ -318,9 +320,9 @@ export function TrendChart({
         {bands.map((b) => {
           const last = b.points[b.points.length - 1];
           return (
-            <View key={b.key} className="mb-1 mr-4 flex-row items-center">
+            <View key={b.key} className="mb-1 flex-row items-center pr-2" style={{ width: '50%' }}>
               <View className="mr-1.5 h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: b.color }} />
-              <Text className="text-xs text-muted">
+              <Text className="flex-shrink text-xs text-muted" numberOfLines={1}>
                 {b.label}
                 {last ? `: ${last[2]}` : ''}
               </Text>
