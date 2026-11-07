@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useSession } from '@/features/auth/session.store';
+import { relocatePairedServer, serverReachable } from '@/features/pairing/relocate';
 import { HISTORY_WINDOW_MS, queryKeys } from './queries';
 
 export type RealtimeStatus = 'connecting' | 'live' | 'offline';
@@ -15,12 +16,15 @@ export const useRealtimeStatus = create<{ status: RealtimeStatus; set(status: Re
 const MAX_RETRY_MS = 30_000;
 /** Close code the core uses when the session is not valid. */
 const CLOSE_UNAUTHORIZED = 4001;
+/** Failed attempts in a row (about 7 s offline) before looking for the server at another address. */
+const RELOCATE_AFTER_ATTEMPTS = 3;
 
 /**
  * Keeps one WebSocket to the core while signed in and writes every pushed change into
  * the query cache, so screens update without polling. Reconnects with exponential
  * backoff (1 s, 2 s, 4 s… up to 30 s) and resynchronises everything after reconnecting,
- * since changes made while disconnected were not received.
+ * since changes made while disconnected were not received. If the server stays unreachable,
+ * the paired server is looked for at another address (its IP may have changed).
  */
 export function useRealtime(): void {
   const queryClient = useQueryClient();
@@ -39,6 +43,7 @@ export function useRealtime(): void {
       switch (message.event) {
         case 'auth':
           attempt = 0;
+          serverReachable();
           setStatus('live');
           void queryClient.invalidateQueries();
           break;
@@ -89,6 +94,8 @@ export function useRealtime(): void {
           return;
         }
         retryTimer = setTimeout(connect, Math.min(MAX_RETRY_MS, 1000 * 2 ** attempt++));
+        // Found elsewhere, the session store gets the new address and this effect restarts there.
+        if (attempt >= RELOCATE_AFTER_ATTEMPTS) void relocatePairedServer();
       };
     };
 

@@ -33,6 +33,8 @@ interface SessionState {
    * later different one is refused until the pairing is forgotten.
    */
   connect(address: string, pairWith?: PairedServer): Promise<void>;
+  /** The paired server, already verified, now answers at another address: use it from now on. */
+  moveServer(serverUrl: string): Promise<void>;
   forgetPairing(): Promise<void>;
   forgetServer(): Promise<void>;
   setup(username: string, password: string): Promise<void>;
@@ -110,7 +112,8 @@ export const useSession = create<SessionState>((set, get) => ({
         // The server answered: the session expired or was closed.
         await forget();
       } else if (token) {
-        // The server did not answer: keep the session; queries retry until it is back.
+        // The server did not answer: keep the session; queries retry until it is back, and the
+        // realtime connection looks for it at another address (see relocatePairedServer).
         const user = await savedUser();
         if (user) set({ token, user });
       }
@@ -129,6 +132,11 @@ export const useSession = create<SessionState>((set, get) => ({
     await storage.set(PAIRED_KEY, JSON.stringify(paired));
     await storage.set(SERVER_KEY, serverUrl);
     set({ serverUrl, needsSetup, paired, identityAlert: false });
+  },
+
+  async moveServer(serverUrl) {
+    await storage.set(SERVER_KEY, serverUrl);
+    set({ serverUrl });
   },
 
   async forgetPairing() {
