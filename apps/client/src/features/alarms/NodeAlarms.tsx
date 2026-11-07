@@ -3,7 +3,7 @@ import { BellOff, CircleAlert, CircleCheck } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { useAcknowledgeAlarm, useModules, useNodes, useOpenAlarms } from '@/api/queries';
-import { Button } from '@/components/ui';
+import { SmallButton } from '@/components/ui';
 import { useSession } from '@/features/auth/session.store';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -56,30 +56,39 @@ export function AlarmList({ alarms, showNode = false }: { alarms: AlarmRecord[];
             key={alarm.id}
             className={`mb-3 rounded-xl border p-3 ${active ? 'border-danger/40 bg-danger/10' : 'border-warning/40 bg-warning/10'}`}
           >
-            <View className="flex-row items-center">
-              <Icon size={18} color={active ? colors.danger : colors.warning} />
-              <Text className="ml-2 flex-1 text-base font-semibold text-ink">{name(alarm)}</Text>
-              <Text className={`text-xs font-semibold ${active ? 'text-danger' : 'text-warning'}`}>{t(`alarms.state.${alarm.state}`)}</Text>
+            {/* The title takes the whole width; state and action share the footer row, so on a
+                narrow phone neither squeezes the title nor takes a row of its own. */}
+            <View className="flex-row">
+              <View className="mt-0.5">
+                <Icon size={18} color={active ? colors.danger : colors.warning} />
+              </View>
+              <View className="ml-2 flex-1">
+                <Text className="text-base font-semibold text-ink">{name(alarm)}</Text>
+                <Text className="mt-0.5 text-xs text-muted">
+                  {showNode ? <Text className="font-medium text-ink">{`${node?.name ?? alarm.nodeId} · `}</Text> : null}
+                  {t('alarms.raisedAt', { time: new Date(alarm.raisedAt).toLocaleTimeString(i18n.language) })}
+                  {alarm.raisedValue !== null ? ` · ${t('alarms.value', { value: alarm.raisedValue.toLocaleString(i18n.language) })}` : ''}
+                </Text>
+                {alarm.count > 1 ? (
+                  <Text className="mt-0.5 text-xs font-medium text-ink">
+                    {t('alarms.repeated', { count: alarm.count, time: new Date(alarm.lastRaisedAt).toLocaleTimeString(i18n.language) })}
+                  </Text>
+                ) : null}
+                {alarm.ackedBy ? <Text className="mt-0.5 text-xs text-muted">{t('alarms.ackedBy', { user: alarm.ackedBy })}</Text> : null}
+              </View>
             </View>
-            {showNode ? <Text className="ml-7 mt-1 text-xs font-medium text-ink">{node?.name ?? alarm.nodeId}</Text> : null}
-            <Text className="ml-7 mt-1 text-xs text-muted">
-              {t('alarms.raisedAt', { time: new Date(alarm.raisedAt).toLocaleTimeString(i18n.language) })}
-              {alarm.raisedValue !== null ? ` · ${t('alarms.value', { value: alarm.raisedValue.toLocaleString(i18n.language) })}` : ''}
-            </Text>
-            {alarm.count > 1 ? (
-              <Text className="ml-7 mt-1 text-xs font-medium text-ink">
-                {t('alarms.repeated', { count: alarm.count, time: new Date(alarm.lastRaisedAt).toLocaleTimeString(i18n.language) })}
-              </Text>
-            ) : null}
-            {alarm.ackedBy ? <Text className="ml-7 mt-1 text-xs text-muted">{t('alarms.ackedBy', { user: alarm.ackedBy })}</Text> : null}
-            {canAck && alarm.ackedAt === null ? (
-              <Button
-                label={t('alarms.acknowledge')}
-                variant="ghost"
-                busy={acknowledge.isPending && acknowledge.variables === alarm.id}
-                onPress={() => acknowledge.mutate(alarm.id)}
-              />
-            ) : null}
+            <View className={`mt-2.5 flex-row items-center border-t pt-2.5 ${active ? 'border-danger/25' : 'border-warning/25'}`}>
+              <Text className={`flex-1 text-xs font-semibold ${active ? 'text-danger' : 'text-warning'}`}>{t(`alarms.state.${alarm.state}`)}</Text>
+              {canAck && alarm.ackedAt === null ? (
+                <View className="ml-3">
+                  <SmallButton
+                    label={t('alarms.acknowledge')}
+                    busy={acknowledge.isPending && acknowledge.variables === alarm.id}
+                    onPress={() => acknowledge.mutate(alarm.id)}
+                  />
+                </View>
+              ) : null}
+            </View>
           </View>
         );
       })}
