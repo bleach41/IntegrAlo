@@ -186,6 +186,8 @@ const es = {
   detail: {
     now: 'Ahora',
     trend: 'Tendencia',
+    csv: 'CSV',
+    csvFailed: 'No se pudo exportar',
     noHistory: 'Aún no hay suficientes lecturas para la gráfica.',
     windows: { '1h': '1 h', '6h': '6 h', '24h': '24 h', '7d': '7 días' },
     averaged: 'Cada punto es el promedio de {{interval}} de lecturas.',

@@ -188,6 +188,8 @@ const en: typeof es = {
   detail: {
     now: 'Now',
     trend: 'Trend',
+    csv: 'CSV',
+    csvFailed: 'Export failed',
     noHistory: 'Not enough readings for the chart yet.',
     windows: { '1h': '1 h', '6h': '6 h', '24h': '24 h', '7d': '7 days' },
     averaged: 'Each point is the average of {{interval}} of readings.',

@@ -10,6 +10,8 @@ import { Band, Series, Threshold, TrendChart } from './TrendChart';
 const SERIES_COLORS: Token[] = ['accent', 'warning', 'muted', 'danger'];
 
 const HOUR = 3_600_000;
+/** Window the trend opens with. */
+export const TREND_DEFAULT_WINDOW_MS = HOUR;
 const WINDOWS = [
   { key: '1h', ms: HOUR },
   { key: '6h', ms: 6 * HOUR },
@@ -25,10 +27,23 @@ type NumberVariable = Extract<VariableDef, { type: 'number' }>;
  * as bands (actuator output, pump) are drawn under the main chart, on the same time axis, and the
  * alarm thresholds of the node are drawn on the chart of their variable.
  */
-export function NodeTrends({ nodeId, manifest }: { nodeId: string; manifest: ModuleManifest }) {
+export function NodeTrends({
+  nodeId,
+  manifest,
+  windowMs: chosen,
+  onWindowChange,
+}: {
+  nodeId: string;
+  manifest: ModuleManifest;
+  /** Window shown, when the screen keeps it (for the CSV button in the section header). */
+  windowMs?: number;
+  onWindowChange?: (ms: number) => void;
+}) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
-  const [windowMs, setWindowMs] = useState<number>(HOUR);
+  const [own, setOwn] = useState<number>(HOUR);
+  const windowMs = chosen ?? own;
+  const setWindowMs = onWindowChange ?? setOwn;
   const history = useHistory(nodeId, windowMs);
   const samples = history.data ?? [];
   const configs = useAlarmConfigs(nodeId).data ?? [];

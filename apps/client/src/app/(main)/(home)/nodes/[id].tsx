@@ -1,6 +1,6 @@
 import { PERMISSIONS, commandPermission, hasPermission, localize } from '@integralo/contract';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { SlidersHorizontal, BellRing, Settings2 } from 'lucide-react-native';
@@ -17,7 +17,8 @@ import { GenericSummary } from '@/features/nodes/GenericSummary';
 import { NodeHeader } from '@/features/nodes/NodeCard';
 import { NodeManageCard } from '@/features/nodes/NodeManageCard';
 import { VariablesGrid } from '@/features/nodes/VariablesGrid';
-import { NodeTrends } from '@/features/telemetry/NodeTrends';
+import { CsvButton } from '@/features/telemetry/CsvButton';
+import { NodeTrends, TREND_DEFAULT_WINDOW_MS } from '@/features/telemetry/NodeTrends';
 import { NodeSynoptic } from '@/features/visual/NodeSynoptic';
 import { moduleViews } from '@/modules/registry';
 import type { ModuleManifest } from '@integralo/contract';
@@ -49,6 +50,7 @@ export default function NodeDetailScreen() {
   const canEngineer = (manifest?.commands ?? []).some((c) => c.partial && hasPermission(permissions, commandPermission(node?.module ?? '', c.type)));
   const known = useNodeState(id, !!node && canEngineer).data;
   const alarmConfigs = useAlarmConfigs(id).data ?? [];
+  const [trendWindow, setTrendWindow] = useState(TREND_DEFAULT_WINDOW_MS);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -100,8 +102,8 @@ export default function NodeDetailScreen() {
           </Section>
 
           {manifest ? (
-            <Section title={t('detail.trend')}>
-              <NodeTrends nodeId={node.id} manifest={manifest} />
+            <Section title={t('detail.trend')} action={<CsvButton nodeId={node.id} windowMs={trendWindow} />}>
+              <NodeTrends nodeId={node.id} manifest={manifest} windowMs={trendWindow} onWindowChange={setTrendWindow} />
             </Section>
           ) : null}
         </View>
@@ -168,10 +170,13 @@ export default function NodeDetailScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <Card className="mb-4">
-      <Text className="mb-4 text-lg font-semibold text-ink">{title}</Text>
+      <View className="mb-4 flex-row items-center justify-between">
+        <Text className="text-lg font-semibold text-ink">{title}</Text>
+        {action}
+      </View>
       {children}
     </Card>
   );
