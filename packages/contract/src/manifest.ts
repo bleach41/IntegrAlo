@@ -33,16 +33,26 @@ export const VariableDefSchema = z.discriminatedUnion('type', [
     decimals: z.number().int().min(0).max(6).optional(),
     /** Scale of gauges and synoptic bars (not a validation limit). */
     displayRange: z.object({ min: z.number(), max: z.number() }).optional(),
+    /**
+     * How trend charts draw it: a line (default); a dashed reference line, such as a setpoint;
+     * or a band under the main chart whose intensity follows the value within displayRange
+     * (0–100 if missing), such as the output of an actuator.
+     */
+    trend: z.enum(['line', 'reference', 'band']).optional(),
   }),
   z.object({
     ...variableCommon,
     type: z.literal('enum'),
     values: z.array(z.string()).min(1),
     valueLabels: z.record(LocalizedTextSchema).optional(),
+    /** Drawn as a band under the main trend chart, filled while the value is not the first one (the rest state). */
+    trend: z.literal('band').optional(),
   }),
   z.object({
     ...variableCommon,
     type: z.literal('boolean'),
+    /** Drawn as a band under the main trend chart, filled while true. */
+    trend: z.literal('band').optional(),
   }),
 ]);
 export type VariableDef = z.infer<typeof VariableDefSchema>;

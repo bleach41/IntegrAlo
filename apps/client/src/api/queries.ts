@@ -83,12 +83,27 @@ export function useOpenAlarms() {
   return useQuery({ queryKey: queryKeys.openAlarms, queryFn: () => api<AlarmRecord[]>('GET', '/alarms') });
 }
 
-/** Last hour of readings; the WebSocket appends new samples to the same cache entry. */
-export function useHistory(nodeId: string) {
+/** Points of a reduced chart series: about two per pixel of a wide chart. */
+export const CHART_POINTS = 600;
+
+/**
+ * Readings of the last `windowMs`. The last hour comes reading by reading and the WebSocket
+ * appends new samples to it; longer windows come averaged by the core into CHART_POINTS
+ * samples and are refreshed every minute.
+ */
+export function useHistory(nodeId: string, windowMs: number = HISTORY_WINDOW_MS) {
   const api = useApi();
+  const live = windowMs <= HISTORY_WINDOW_MS;
   return useQuery({
-    queryKey: queryKeys.history(nodeId),
-    queryFn: () => api<TelemetrySample[]>('GET', `/nodes/${nodeId}/telemetry?from=${Date.now() - HISTORY_WINDOW_MS}&limit=5000`),
+    queryKey: live ? queryKeys.history(nodeId) : ([...queryKeys.history(nodeId), windowMs] as const),
+    queryFn: () =>
+      api<TelemetrySample[]>(
+        'GET',
+        `/nodes/${nodeId}/telemetry?from=${Date.now() - windowMs}` + (live ? '&limit=5000' : `&points=${CHART_POINTS}`),
+      ),
+    refetchInterval: live ? false : 60_000,
+    // Changing the window keeps the previous chart on screen until the new one arrives.
+    placeholderData: (previous) => previous,
   });
 }
 

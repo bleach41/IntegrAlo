@@ -167,8 +167,11 @@ const en: typeof es = {
   },
   detail: {
     now: 'Now',
-    trend: 'Trend (last hour)',
+    trend: 'Trend',
     noHistory: 'Not enough readings for the chart yet.',
+    windows: { '1h': '1 h', '6h': '6 h', '24h': '24 h', '7d': '7 days' },
+    averaged: 'Each point is the average of {{interval}} of readings.',
+    cursorHint: 'Hover or slide a finger over the chart to see the exact values.',
     control: 'Control',
     engineering: 'Engineering',
     notFound: 'This node does not exist or is not approved.',

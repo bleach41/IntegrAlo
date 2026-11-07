@@ -7,6 +7,7 @@ import { NodesModule } from '../nodes/nodes.module';
 import { NodesService } from '../nodes/nodes.service';
 import { ModuleRegistryService } from '../registry/module-registry.service';
 import { telemetryToCsv } from './csv';
+import { downsample } from './downsample';
 import { TelemetryService } from './telemetry.service';
 
 const EXPORT_MAX_ROWS = 200_000;
@@ -20,7 +21,12 @@ const QuerySchema = z.object({
   from: z.coerce.number().int().optional(),
   to: z.coerce.number().int().optional(),
   limit: z.coerce.number().int().min(1).max(50_000).default(5000),
+  /** For charts: at most this many samples, averaged over equal time buckets (see downsample). */
+  points: z.coerce.number().int().min(10).max(5000).optional(),
 });
+
+/** Readings read to build a reduced chart series: 8 days at one reading per second. */
+const CHART_SOURCE_MAX_ROWS = 700_000;
 
 @Controller('nodes/:id/telemetry')
 class TelemetryController {
@@ -30,14 +36,19 @@ class TelemetryController {
     private readonly registry: ModuleRegistryService,
   ) {}
 
-  /** Samples between from and to (Unix ms); by default, the last hour. */
+  /**
+   * Samples between from and to (Unix ms); by default, the last hour. With `points` the window
+   * is reduced to that many averaged samples, so a week fits in a chart.
+   */
   @RequirePermission(PERMISSIONS.telemetryRead)
   @Get()
   query(@Param('id') id: string, @Query() query: unknown) {
     this.nodes.get(id);
-    const { from, to, limit } = parseBody(QuerySchema, query);
+    const { from, to, limit, points } = parseBody(QuerySchema, query);
     const end = to ?? Date.now();
-    return this.telemetry.query(id, from ?? end - 3_600_000, end, limit);
+    const start = from ?? end - 3_600_000;
+    if (points === undefined) return this.telemetry.query(id, start, end, limit);
+    return downsample(this.telemetry.query(id, start, end, CHART_SOURCE_MAX_ROWS), start, end, points);
   }
 
   /** CSV download (RF-13); by default, the last 24 hours. */

@@ -13,8 +13,8 @@
       "displayRange": { "min": 16, "max": 32 },
       "label": { "es": "Temperatura", "en": "Temperature" }
     },
-    { "key": "setpoint", "type": "number", "unit": "°C", "decimals": 1, "label": { "es": "Consigna", "en": "Setpoint" } },
-    { "key": "output", "type": "number", "unit": "%", "decimals": 0, "label": { "es": "Climatizador", "en": "Air conditioner" } },
+    { "key": "setpoint", "type": "number", "unit": "°C", "decimals": 1, "trend": "reference", "label": { "es": "Consigna", "en": "Setpoint" } },
+    { "key": "output", "type": "number", "unit": "%", "decimals": 0, "trend": "band", "label": { "es": "Climatizador", "en": "Air conditioner" } },
     {
       "key": "mode",
       "type": "enum",

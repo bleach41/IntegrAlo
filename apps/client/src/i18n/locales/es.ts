@@ -165,8 +165,11 @@ const es = {
   },
   detail: {
     now: 'Ahora',
-    trend: 'Tendencia (última hora)',
+    trend: 'Tendencia',
     noHistory: 'Aún no hay suficientes lecturas para la gráfica.',
+    windows: { '1h': '1 h', '6h': '6 h', '24h': '24 h', '7d': '7 días' },
+    averaged: 'Cada punto es el promedio de {{interval}} de lecturas.',
+    cursorHint: 'Pasa el ratón o desliza el dedo sobre la gráfica para ver los valores exactos.',
     control: 'Control',
     engineering: 'Ingeniería',
     notFound: 'Este nodo no existe o no está aprobado.',

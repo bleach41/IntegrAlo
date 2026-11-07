@@ -17,6 +17,7 @@
       "key": "pump",
       "type": "enum",
       "values": ["off", "on"],
+      "trend": "band",
       "label": { "es": "Bomba", "en": "Pump" },
       "valueLabels": { "off": { "es": "Bomba apagada", "en": "Pump off" }, "on": { "es": "Bomba encendida", "en": "Pump on" } }
     },
