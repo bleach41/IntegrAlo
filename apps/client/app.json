@@ -11,7 +11,22 @@
       "expo-router",
       "expo-secure-store",
       "expo-localization",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "IntegrAlo usa la cámara solo para escanear el código QR de vinculación del servidor.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -20,6 +35,9 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "cu.cujae.integralo",
+      "versionCode": 1,
+      "permissions": ["android.permission.CAMERA"],
       "adaptiveIcon": {
         "backgroundColor": "#047857",
         "foregroundImage": "./assets/android-icon-foreground.png",
