@@ -107,7 +107,8 @@ export function TrendChart({
   const axis = (v: number) => v.toLocaleString(i18n.language, { maximumFractionDigits: axisDecimals });
 
   const step = typicalStep(series.map((s) => s.points));
-  const maxPoints = Math.max(200, Math.round(plotW * 2));
+  // One envelope bucket per pixel of the plot.
+  const bucketMs = (to - from) / Math.max(100, Math.round(plotW));
 
   // Cursor: nearest reading of each series to the time under the pointer.
   const cursorTime = cursor === null ? null : timeAt(cursor);
@@ -148,7 +149,7 @@ export function TrendChart({
             )}
 
             {series.map((s) =>
-              segments(thin(s.points, maxPoints), step).map((segment, i) => (
+              segments(envelope(s.points, bucketMs), step).map((segment, i) => (
                 <Polyline
                   key={`${s.key}${i}`}
                   points={segment.map(([time, v]) => `${x(time).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
@@ -364,11 +365,35 @@ function nearest<P extends [number, ...unknown[]]>(points: P[], time: number, st
   return Math.abs(best[0] - time) <= 3 * step ? best : undefined;
 }
 
-function thin<P>(points: P[], max: number): P[] {
-  if (points.length <= max) return points;
-  const step = points.length / max;
-  const result: P[] = [];
-  for (let i = 0; i < max; i++) result.push(points[Math.floor(i * step)]);
-  result.push(points[points.length - 1]);
+/**
+ * Fewer points for drawing, without the past changing as new readings arrive: time is cut into
+ * fixed buckets counted from the epoch (not from the window start, which moves), and each bucket
+ * keeps its lowest and highest reading in time order. So a bucket already drawn always gives the
+ * same two points, and fast swings (a pump cycling) keep their full height instead of whichever
+ * reading happened to be picked.
+ */
+function envelope(points: Array<[number, number]>, bucketMs: number): Array<[number, number]> {
+  if (points.length <= 2 || !(bucketMs > 0)) return points;
+  const result: Array<[number, number]> = [];
+  let bucket = Math.floor(points[0][0] / bucketMs);
+  let low = points[0];
+  let high = points[0];
+  const flush = () => {
+    if (low === high) result.push(low);
+    else result.push(...(low[0] < high[0] ? [low, high] : [high, low]));
+  };
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i];
+    const b = Math.floor(point[0] / bucketMs);
+    if (b !== bucket) {
+      flush();
+      bucket = b;
+      low = high = point;
+    } else {
+      if (point[1] < low[1]) low = point;
+      if (point[1] > high[1]) high = point;
+    }
+  }
+  flush();
   return result;
 }

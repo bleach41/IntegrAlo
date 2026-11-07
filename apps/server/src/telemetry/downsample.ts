@@ -1,10 +1,12 @@
 import type { TelemetrySample } from '@integralo/contract';
 
 /**
- * Reduces a long series to at most `points` samples for a chart: the window [from, to] is cut
- * into equal time buckets and each bucket with readings becomes one sample, placed at the mean
- * time of its readings. Numbers are averaged; other values (modes, states) take the value seen
- * most often in the bucket. A short series is returned unchanged.
+ * Reduces a long series to about `points` samples for a chart: time is cut into equal buckets
+ * of (to − from) / points, counted from the epoch and not from `from` (which moves with every
+ * refresh, so buckets counted from it would regroup the readings and change the past of the
+ * chart). Each bucket with readings becomes one sample, placed at the mean time of its readings.
+ * Numbers are averaged; other values (modes, states) take the value seen most often in the
+ * bucket. A short series is returned unchanged.
  *
  * Averaging hides peaks shorter than a bucket: the client says how long a bucket is, so the
  * chart is read as a trend and not as individual readings.
@@ -14,7 +16,7 @@ export function downsample(samples: TelemetrySample[], from: number, to: number,
   const bucketMs = Math.max(1, (to - from) / points);
   const buckets = new Map<number, TelemetrySample[]>();
   for (const sample of samples) {
-    const index = Math.min(points - 1, Math.floor((sample.receivedAt - from) / bucketMs));
+    const index = Math.floor(sample.receivedAt / bucketMs);
     const bucket = buckets.get(index);
     if (bucket) bucket.push(sample);
     else buckets.set(index, [sample]);

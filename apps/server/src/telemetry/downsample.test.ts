@@ -27,6 +27,19 @@ test('numbers are averaged and states take the most frequent value per bucket', 
   assert.equal(result[1].seq, 70);
 });
 
+test('buckets do not depend on the window start, so the past does not change', () => {
+  const samples = Array.from({ length: 40 }, (_, i) => sample(1000 + i * 10, { t: i % 2 }));
+  const a = downsample(samples, 1000, 1400, 4);
+  const b = downsample(samples.slice(1), 1010, 1410, 4);
+  // Every bucket fully inside both windows has the same sample.
+  const common = a.filter((s) => s.receivedAt > 1100 && s.receivedAt < 1300);
+  assert.deepEqual(
+    common,
+    b.filter((s) => s.receivedAt > 1100 && s.receivedAt < 1300),
+  );
+  assert.ok(common.length > 0);
+});
+
 test('empty buckets are skipped, so gaps stay visible', () => {
   const samples = [sample(0, { t: 1 }), sample(5, { t: 1 }), sample(95, { t: 3 }), sample(99, { t: 5 })];
   const result = downsample(samples, 0, 100, 3);
