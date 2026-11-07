@@ -55,7 +55,6 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
           current={current[fields[0][0]]}
           disabled={disabled || locked}
           busy={waiting}
-          sent={send.variables?.payload[fields[0][0]]}
           failed={send.isError || record?.status === 'rejected' || record?.status === 'unconfirmed'}
           onSubmit={submit}
         />
@@ -89,31 +88,43 @@ function SingleField({
   current,
   disabled,
   busy,
-  sent,
   failed,
   onSubmit,
-}: FieldProps & { name: string; field: CommandFieldDef; current?: TelemetryValue; sent?: unknown; failed: boolean }) {
+}: FieldProps & { name: string; field: CommandFieldDef; current?: TelemetryValue; failed: boolean }) {
   const { t, i18n } = useTranslation();
   // Until the user edits it, the stepper follows the live value (which may arrive after mounting).
   const [edited, setEdited] = useState<number | undefined>();
   const live = typeof current === 'number' ? current : undefined;
   // The sent value stays on screen from the press until a reading reports it, instead of the old
-  // value flashing back while the node answers. If the command fails (rejected, unconfirmed,
-  // not sent) the control goes back to what the node reports. Once reported, it follows the
-  // node again, even if someone else changes the value later.
-  const [awaiting, setAwaiting] = useState(false);
+  // value flashing back while the node answers. It is kept here, at the press, and not read back
+  // from the request library: right after the press that one still holds the previous command
+  // for a moment, and comparing against it released the new value too early. If the command
+  // fails (rejected, unconfirmed, not sent) the control goes back to what the node reports; a
+  // failure only counts once this command has been under way, so the previous command's outcome
+  // cannot release it. Once reported, the control follows the node again.
+  const [target, setTarget] = useState<{ value: TelemetryValue; started: boolean } | null>(null);
   useEffect(() => {
-    if (awaiting && (current === sent || failed)) setAwaiting(false);
-  }, [awaiting, current, sent, failed]);
+    if (!target) return;
+    if (current === target.value) setTarget(null);
+    else if (busy && !target.started) setTarget({ ...target, started: true });
+    else if (target.started && !busy && failed) setTarget(null);
+  }, [target, current, busy, failed]);
+  // Confirmed but never reported as such (a node that rounds the value): stop waiting after a while.
+  const settled = target !== null && target.started && !busy;
+  useEffect(() => {
+    if (!settled) return;
+    const timer = setTimeout(() => setTarget(null), 5000);
+    return () => clearTimeout(timer);
+  }, [settled]);
   const submit = (payload: Record<string, unknown>) => {
-    setAwaiting(true);
+    setTarget({ value: payload[name] as TelemetryValue, started: false });
     onSubmit(payload);
   };
 
   if (field.type === 'enum') {
     // The pressed option is shown at once, with a spinner while the node has not answered.
-    const choice = typeof sent === 'string' ? sent : undefined;
-    const showChoice = choice !== undefined && awaiting;
+    const choice = typeof target?.value === 'string' ? target.value : undefined;
+    const showChoice = choice !== undefined;
     return (
       <Segmented
         value={showChoice ? choice : typeof current === 'string' ? current : ''}
@@ -127,7 +138,7 @@ function SingleField({
 
   const step = field.step ?? 1;
   const clamp = (v: number) => Math.min(field.max ?? Infinity, Math.max(field.min ?? -Infinity, v));
-  const pending = typeof sent === 'number' && awaiting ? sent : undefined;
+  const pending = typeof target?.value === 'number' ? target.value : undefined;
   const shown = edited ?? pending ?? live ?? field.min ?? 0;
   const decimals = (String(step).split('.')[1] ?? '').length;
 
