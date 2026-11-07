@@ -1,5 +1,3 @@
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
 /**
@@ -29,6 +27,11 @@ export async function exportCsv(serverUrl: string, token: string, nodeId: string
     return;
   }
 
+  // Loaded here, not at start-up: a host app without these native modules still opens.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { File, Paths } = require('expo-file-system') as typeof import('expo-file-system');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Sharing = require('expo-sharing') as typeof import('expo-sharing');
   const file = await File.downloadFileAsync(url, new File(Paths.cache, name), { headers, idempotent: true });
   await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text', dialogTitle: name });
 }

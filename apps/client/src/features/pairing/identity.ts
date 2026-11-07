@@ -1,7 +1,20 @@
 import { identityMessage, type IdentityProof } from '@integralo/contract';
-import { getRandomBytes } from 'expo-crypto';
 import nacl from 'tweetnacl';
 import { ApiError, apiRequest } from '@/api/client';
+
+/**
+ * Cryptographically random bytes for the challenge. The standard Web Crypto source is used when
+ * the runtime has it (browsers, recent React Native); otherwise the Expo module, loaded only here
+ * and not when the app starts: if a host app lacks it (an Expo Go build without the native
+ * module), pairing fails with a clear error instead of the whole app failing to open.
+ */
+function randomBytes(length: number): Uint8Array {
+  const web = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+  if (typeof web?.getRandomValues === 'function') return web.getRandomValues(new Uint8Array(length));
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getRandomBytes } = require('expo-crypto') as typeof import('expo-crypto');
+  return getRandomBytes(length);
+}
 
 /** The server answered, but it is not the one this app was paired with (or its signature is wrong). */
 export class IdentityMismatchError extends Error {
@@ -17,7 +30,7 @@ export class IdentityMismatchError extends Error {
  * an address or a name, never the private key. Returns the server's public key.
  */
 export async function verifyServer(baseUrl: string, expected?: string | null): Promise<string> {
-  const nonce = toBase64Url(getRandomBytes(24));
+  const nonce = toBase64Url(randomBytes(24));
   const proof = await apiRequest<IdentityProof>(baseUrl, 'GET', `/identity?nonce=${nonce}`);
   if (typeof proof?.publicKey !== 'string' || typeof proof.signature !== 'string') throw new ApiError(-1, 'not_integralo');
   if (expected && proof.publicKey !== expected) throw new IdentityMismatchError();
