@@ -1,6 +1,6 @@
 import { CommandDef, CommandFieldDef, ModuleManifest, TelemetryValue, localize } from '@integralo/contract';
 import { Send } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useCommand, useSendCommand } from '@/api/queries';
@@ -38,8 +38,11 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
   const locked = when !== undefined && !when.values.includes(String(current[when.variable]));
   const waiting = send.isPending || record?.status === 'sent';
 
-  const submit = (payload: Record<string, unknown>) =>
+  const submit = (payload: Record<string, unknown>) => {
+    // Forget the previous command at once: its outcome must not be read as this one's.
+    setCommandId(undefined);
     send.mutate({ type: command.type, payload }, { onSuccess: (r) => setCommandId(r.id) });
+  };
 
   return (
     <View className="mb-5">
@@ -52,7 +55,7 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
           disabled={disabled || locked}
           busy={waiting}
           sent={send.variables?.payload[fields[0][0]]}
-          confirmed={record?.status === 'confirmed'}
+          failed={send.isError || record?.status === 'rejected' || record?.status === 'unconfirmed'}
           onSubmit={submit}
         />
       ) : (
@@ -86,34 +89,45 @@ function SingleField({
   disabled,
   busy,
   sent,
-  confirmed,
+  failed,
   onSubmit,
-}: FieldProps & { name: string; field: CommandFieldDef; current?: TelemetryValue; sent?: unknown; confirmed: boolean }) {
+}: FieldProps & { name: string; field: CommandFieldDef; current?: TelemetryValue; sent?: unknown; failed: boolean }) {
   const { i18n } = useTranslation();
   // Until the user edits it, the stepper follows the live value (which may arrive after mounting).
   const [edited, setEdited] = useState<number | undefined>();
   const live = typeof current === 'number' ? current : undefined;
+  // The sent value stays on screen from the press until a reading reports it, instead of the old
+  // value flashing back while the node answers. If the command fails (rejected, unconfirmed,
+  // not sent) the control goes back to what the node reports. Once reported, it follows the
+  // node again, even if someone else changes the value later.
+  const [awaiting, setAwaiting] = useState(false);
+  useEffect(() => {
+    if (awaiting && (current === sent || failed)) setAwaiting(false);
+  }, [awaiting, current, sent, failed]);
+  const submit = (payload: Record<string, unknown>) => {
+    setAwaiting(true);
+    onSubmit(payload);
+  };
 
   if (field.type === 'enum') {
-    // The pressed option is shown at once: with a spinner while the node has not answered,
-    // and, once confirmed, until the next reading reports it. A rejected or unconfirmed
-    // command goes back to what the node actually reports.
+    // The pressed option is shown at once, with a spinner while the node has not answered.
     const choice = typeof sent === 'string' ? sent : undefined;
-    const showChoice = choice !== undefined && (busy || (confirmed && current !== choice));
+    const showChoice = choice !== undefined && awaiting;
     return (
       <Segmented
         value={showChoice ? choice : typeof current === 'string' ? current : ''}
         busyValue={busy ? choice : undefined}
         disabled={disabled}
         options={field.values.map((v) => ({ value: v, label: localize(field.valueLabels?.[v], i18n.language, v) }))}
-        onChange={(v) => !disabled && !busy && v !== current && onSubmit({ [name]: v })}
+        onChange={(v) => !disabled && !busy && v !== current && submit({ [name]: v })}
       />
     );
   }
 
   const step = field.step ?? 1;
   const clamp = (v: number) => Math.min(field.max ?? Infinity, Math.max(field.min ?? -Infinity, v));
-  const shown = edited ?? live ?? field.min ?? 0;
+  const pending = typeof sent === 'number' && awaiting ? sent : undefined;
+  const shown = edited ?? pending ?? live ?? field.min ?? 0;
   const decimals = (String(step).split('.')[1] ?? '').length;
 
   return (
@@ -130,8 +144,8 @@ function SingleField({
           disabled={disabled}
           onPress={() => {
             if (disabled) return;
-            onSubmit({ [name]: shown });
-            setEdited(undefined); // follow the live value again; the confirmed value will arrive with the telemetry
+            submit({ [name]: shown });
+            setEdited(undefined); // shows the sent value until the node reports it (see `pending`)
           }}
         />
       </View>
