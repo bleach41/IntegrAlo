@@ -140,6 +140,7 @@ const en: typeof es = {
     empty: 'There are no approved nodes yet. Turn on a node on the same network and it will appear here for approval.',
     online: 'Online',
     offline: 'Offline',
+    noServerData: 'No data',
     noData: 'No readings yet',
     updatedAt: 'Updated at {{time}}',
     lastReading: 'Last reading: {{time}}',

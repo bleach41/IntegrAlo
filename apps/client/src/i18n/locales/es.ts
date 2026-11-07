@@ -138,6 +138,7 @@ const es = {
     empty: 'Todavía no hay nodos aprobados. Enciende un nodo en la misma red y aparecerá aquí para aprobarlo.',
     online: 'En línea',
     offline: 'Fuera de línea',
+    noServerData: 'Sin datos',
     noData: 'Sin lecturas todavía',
     updatedAt: 'Actualizado a las {{time}}',
     lastReading: 'Última lectura: {{time}}',

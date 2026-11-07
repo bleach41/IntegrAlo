@@ -8,9 +8,15 @@ import { HISTORY_WINDOW_MS, queryKeys } from './queries';
 
 export type RealtimeStatus = 'connecting' | 'live' | 'offline';
 
-export const useRealtimeStatus = create<{ status: RealtimeStatus; set(status: RealtimeStatus): void }>((set) => ({
+/**
+ * `lost`: the connection dropped and is not live again yet. Unlike `status`, it does not go back
+ * and forth with each reconnection attempt (connecting → offline → connecting…), so what depends
+ * on it (cards shown as stale) does not flicker while the client retries.
+ */
+export const useRealtimeStatus = create<{ status: RealtimeStatus; lost: boolean; set(status: RealtimeStatus): void }>((set) => ({
   status: 'connecting',
-  set: (status) => set({ status }),
+  lost: false,
+  set: (status) => set((s) => ({ status, lost: status === 'live' ? false : status === 'offline' ? true : s.lost })),
 }));
 
 const MAX_RETRY_MS = 30_000;
