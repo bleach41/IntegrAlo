@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, createContext, useContext, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, TextInputProps, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,14 @@ import { useTheme } from '@/theme/ThemeProvider';
  * Own interface components. They only use the semantic color tokens (bg-surface,
  * text-ink, …), so they follow the light/dark theme without conditional classes.
  */
+
+/**
+ * Lets a control inside the screen stop it from scrolling while the user drags it (the setpoint
+ * dial, the output slider): on Android the scroll view takes a moving finger for itself, so
+ * without this the page scrolls instead of the control moving.
+ */
+const ScrollLockContext = createContext<(locked: boolean) => void>(() => {});
+export const useScrollLock = () => useContext(ScrollLockContext);
 
 /**
  * Full-screen container with the app background, safe areas and keyboard handling.
@@ -39,25 +47,32 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const width = wide ? 'max-w-6xl' : 'max-w-xl';
   const bottom = inTabs && !wideScreen ? FLOATING_NAV_SPACE + Math.max(insets.bottom, 12) : undefined;
+  const [locked, setLocked] = useState(false);
+  const lock = useMemo(() => (on: boolean) => setLocked(on), []);
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={inTabs ? ['top', 'left', 'right'] : undefined}>
-      {/* "padding" on Android too: with edge-to-edge (Expo SDK 58) the system no longer
+    <ScrollLockContext.Provider value={lock}>
+      <SafeAreaView className="flex-1 bg-canvas" edges={inTabs ? ['top', 'left', 'right'] : undefined}>
+        {/* "padding" on Android too: with edge-to-edge (Expo SDK 58) the system no longer
           resizes the window for the keyboard, so the field being typed would stay hidden. */}
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'web' ? undefined : 'padding'}>
-        <ScrollView
-          contentContainerClassName={`grow px-5 py-8 ${centered ? 'justify-center' : ''}`}
-          contentContainerStyle={bottom !== undefined ? { paddingBottom: bottom } : undefined}
-          keyboardShouldPersistTaps="handled"
-          stickyHeaderIndices={sticky ? [1] : undefined}
-        >
-          {sticky ? <View className={`w-full self-center ${width}`}>{header}</View> : null}
-          {sticky ? <View className="-mx-5 bg-canvas px-5 pb-1 pt-2">
-            <View className={`w-full self-center ${width}`}>{sticky}</View>
-          </View> : null}
-          <View className={`w-full self-center ${width}`}>{children}</View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'web' ? undefined : 'padding'}>
+          <ScrollView
+            contentContainerClassName={`grow px-5 py-8 ${centered ? 'justify-center' : ''}`}
+            contentContainerStyle={bottom !== undefined ? { paddingBottom: bottom } : undefined}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={!locked}
+            stickyHeaderIndices={sticky ? [1] : undefined}
+          >
+            {sticky ? <View className={`w-full self-center ${width}`}>{header}</View> : null}
+            {sticky ? (
+              <View className="-mx-5 bg-canvas px-5 pb-1 pt-2">
+                <View className={`w-full self-center ${width}`}>{sticky}</View>
+              </View>
+            ) : null}
+            <View className={`w-full self-center ${width}`}>{children}</View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ScrollLockContext.Provider>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GestureResponderEvent, LayoutChangeEvent, Platform, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { useScrollLock } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 
 interface DragProps {
@@ -23,8 +24,9 @@ interface WebPointerEvent {
 /**
  * Drag handling shared by both controls, on an empty layer over the drawing; the position is
  * measured on that layer.
- * - Phone: the layer becomes the touch responder and keeps it while dragging, so the scroll view
- *   around it does not take the gesture over.
+ * - Phone: the layer becomes the touch responder and keeps it while dragging, and the screen's
+ *   scroll is locked from the touch until the finger lifts (on Android the scroll view would
+ *   otherwise take the moving finger and scroll the page instead of moving the control).
  * - Web: pointer events with pointer capture, and `touch-action: none` so the browser does not
  *   scroll the page under the finger. The responder system is not used there: the page scrolls
  *   anyway when the mouse wheel or a finger moves it, and each refused hand-over printed a
@@ -32,6 +34,7 @@ interface WebPointerEvent {
  */
 function useDrag(disabled: boolean, toValue: (x: number, y: number) => number, onChange: (value: number) => void) {
   const [dragging, setDragging] = useState(false);
+  const lockScroll = useScrollLock();
   if (disabled) return {};
   if (Platform.OS === 'web') {
     const at = (e: WebPointerEvent) => onChange(toValue(e.nativeEvent.offsetX, e.nativeEvent.offsetY));
@@ -49,12 +52,20 @@ function useDrag(disabled: boolean, toValue: (x: number, y: number) => number, o
     };
   }
   const move = (e: GestureResponderEvent) => onChange(toValue(e.nativeEvent.locationX, e.nativeEvent.locationY));
+  // The page stops scrolling from the touch until the finger lifts, so the whole drag moves the
+  // control (Android hands a moving finger to the scroll view otherwise).
+  const release = () => lockScroll(false);
   return {
     onStartShouldSetResponder: () => true,
     onMoveShouldSetResponder: () => true,
     onResponderTerminationRequest: () => false,
-    onResponderGrant: move,
+    onResponderGrant: (e: GestureResponderEvent) => {
+      lockScroll(true);
+      move(e);
+    },
     onResponderMove: move,
+    onResponderRelease: release,
+    onResponderTerminate: release,
   };
 }
 
