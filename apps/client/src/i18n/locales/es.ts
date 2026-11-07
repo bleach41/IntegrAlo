@@ -176,8 +176,9 @@ const es = {
   },
   commands: {
     send: 'Enviar',
-    sending: 'Enviando…',
+    sending: 'Enviando al nodo…',
     confirmed: 'Confirmada por el nodo en {{ms}} ms',
+    confirmedAt: 'Confirmada a las {{time}} · {{ms}} ms',
     rejected: 'Rechazada por el nodo: {{reason}}',
     unconfirmed: 'Sin confirmar: el nodo no respondió.',
     failed: 'No se pudo enviar la orden.',

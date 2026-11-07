@@ -178,8 +178,9 @@ const en: typeof es = {
   },
   commands: {
     send: 'Send',
-    sending: 'Sending…',
+    sending: 'Sending to the node…',
     confirmed: 'Confirmed by the node in {{ms}} ms',
+    confirmedAt: 'Confirmed at {{time}} · {{ms}} ms',
     rejected: 'Rejected by the node: {{reason}}',
     unconfirmed: 'Unconfirmed: the node did not answer.',
     failed: 'The command could not be sent.',

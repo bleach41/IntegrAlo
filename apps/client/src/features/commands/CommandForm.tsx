@@ -1,6 +1,6 @@
 import { CommandDef, CommandFieldDef, ModuleManifest, TelemetryValue, localize } from '@integralo/contract';
 import { Send } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useCommand, useSendCommand } from '@/api/queries';
@@ -45,6 +45,16 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
     send.mutate({ type: command.type, payload }, { onSuccess: (r) => setCommandId(r.id) });
   };
 
+  // The node's answer: each layout places it where the eye already is (under the value).
+  const status = (align: 'left' | 'center') => (
+    <CommandStatus
+      commandId={locked ? undefined : commandId}
+      failed={!locked && send.isError}
+      hint={locked && when ? t('commands.onlyWhen', { values: valueNames(manifest, when.variable, when.values, i18n.language) }) : undefined}
+      align={align}
+    />
+  );
+
   return (
     <View className="mb-5">
       <Text className={`mb-2 text-sm font-medium ${locked ? 'text-muted' : 'text-ink'}`}>{title}</Text>
@@ -57,15 +67,14 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
           busy={waiting}
           failed={send.isError || record?.status === 'rejected' || record?.status === 'unconfirmed'}
           onSubmit={submit}
+          status={status}
         />
       ) : (
-        <MultiFieldForm fields={fields} disabled={disabled || locked} busy={waiting} onSubmit={submit} />
+        <>
+          <MultiFieldForm fields={fields} disabled={disabled || locked} busy={waiting} onSubmit={submit} />
+          <View className="mt-2">{status('left')}</View>
+        </>
       )}
-      <CommandStatus
-        commandId={locked ? undefined : commandId}
-        failed={!locked && send.isError}
-        hint={locked && when ? t('commands.onlyWhen', { values: valueNames(manifest, when.variable, when.values, i18n.language) }) : undefined}
-      />
     </View>
   );
 }
@@ -90,7 +99,15 @@ function SingleField({
   busy,
   failed,
   onSubmit,
-}: FieldProps & { name: string; field: CommandFieldDef; current?: TelemetryValue; failed: boolean }) {
+  status,
+}: FieldProps & {
+  name: string;
+  field: CommandFieldDef;
+  current?: TelemetryValue;
+  failed: boolean;
+  /** The node's answer, drawn by the form; placed here under the value. */
+  status: (align: 'left' | 'center') => ReactNode;
+}) {
   const { t, i18n } = useTranslation();
   // Until the user edits it, the stepper follows the live value (which may arrive after mounting).
   const [edited, setEdited] = useState<number | undefined>();
@@ -126,13 +143,16 @@ function SingleField({
     const choice = typeof target?.value === 'string' ? target.value : undefined;
     const showChoice = choice !== undefined;
     return (
-      <Segmented
-        value={showChoice ? choice : typeof current === 'string' ? current : ''}
-        busyValue={busy ? choice : undefined}
-        disabled={disabled}
-        options={field.values.map((v) => ({ value: v, label: localize(field.valueLabels?.[v], i18n.language, v) }))}
-        onChange={(v) => !disabled && !busy && v !== current && submit({ [name]: v })}
-      />
+      <View>
+        <Segmented
+          value={showChoice ? choice : typeof current === 'string' ? current : ''}
+          busyValue={busy ? choice : undefined}
+          disabled={disabled}
+          options={field.values.map((v) => ({ value: v, label: localize(field.valueLabels?.[v], i18n.language, v) }))}
+          onChange={(v) => !disabled && !busy && v !== current && submit({ [name]: v })}
+        />
+        <View className="mt-2">{status('left')}</View>
+      </View>
     );
   }
 
@@ -166,6 +186,7 @@ function SingleField({
         <ArcDial value={shown} min={field.min} max={field.max} step={step} disabled={disabled} onChange={setEdited}>
           <Text className={`text-3xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>{text(shown)}</Text>
           <Text className="mt-0.5 text-xs text-muted">{reported}</Text>
+          <View className="mt-1 self-stretch">{status('center')}</View>
         </ArcDial>
         <View className="mt-3 flex-row items-center justify-center">
           {minus}
@@ -184,6 +205,7 @@ function SingleField({
           <Text className={`text-2xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>{text(shown)}</Text>
           <Text className="ml-2 flex-1 text-xs text-muted">{reported}</Text>
         </View>
+        <View className="mb-1">{status('left')}</View>
         <SliderBar value={shown} min={field.min} max={field.max} step={step} disabled={disabled} onChange={setEdited} />
         <View className="mt-2 flex-row items-center justify-center">
           {minus}
@@ -201,6 +223,7 @@ function SingleField({
       <Text className={`mx-3 min-w-24 text-center text-2xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>{text(shown)}</Text>
       {plus}
       <View className="ml-auto">{sendButton}</View>
+      <View className="mt-2 w-full">{status('left')}</View>
     </View>
   );
 }
