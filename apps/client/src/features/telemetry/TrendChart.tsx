@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutChangeEvent, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from 'react-native-svg';
@@ -69,12 +69,13 @@ export function TrendChart({
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
   const [cursor, setCursor] = useState<number | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const all = series.flatMap((s) => s.points);
-  if (all.length < 2) return null;
+  const empty = all.length < 2;
 
-  let vMin = Math.min(...all.map((p) => p[1]));
-  let vMax = Math.max(...all.map((p) => p[1]));
+  let vMin = empty ? 0 : all.reduce((m, p) => Math.min(m, p[1]), Infinity);
+  let vMax = empty ? 1 : all.reduce((m, p) => Math.max(m, p[1]), -Infinity);
   // A threshold close to the data is brought into view; a far one would flatten the curve, so it
   // is only named at the edge.
   const span = Math.max(vMax - vMin, 1);
@@ -119,13 +120,28 @@ export function TrendChart({
   const onPointer = (e: { nativeEvent: { offsetX?: number; locationX?: number } }) => {
     const px = e.nativeEvent.offsetX ?? e.nativeEvent.locationX;
     if (px === undefined) return;
+    clearTimeout(hideTimer.current);
     setCursor(Math.min(PAD.left + plotW, Math.max(PAD.left, px)));
   };
+  // The cursor goes away when the mouse leaves the chart, and a moment after lifting the finger
+  // (a touch screen has no "leave": the values stay readable for a little while).
+  const onLeave = () => {
+    clearTimeout(hideTimer.current);
+    setCursor(null);
+  };
+  const onLift = (e: { nativeEvent: { pointerType?: string } }) => {
+    if (e.nativeEvent.pointerType === 'mouse') return; // a click: the mouse is still over the chart
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setCursor(null), 2500);
+  };
 
-  return (
-    <View onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
-      {width > 0 ? (
-        <View style={{ height }}>
+  // The plot itself (grid, curves, thresholds, bands, time axis) is drawn again only when its
+  // data or size change, not on every pointer move: moving the cursor redraws just the cursor
+  // layer on top. Before, each move redrew the whole chart (about 48 ms with an hour of fast
+  // readings, enough to feel slow).
+  const plot = useMemo(
+    () =>
+      empty || width === 0 ? null : (
           <Svg width={width} height={height}>
             {Array.from({ length: GRID_LINES + 1 }, (_, i) => {
               const v = vMin + ((vMax - vMin) * i) / GRID_LINES;
@@ -188,7 +204,7 @@ export function TrendChart({
               const top = PAD.top + PLOT_HEIGHT + BAND_GAP + i * (BAND_HEIGHT + BAND_GAP);
               return [
                 <Rect key={`${b.key}bg`} x={PAD.left} y={top} width={plotW} height={BAND_HEIGHT} fill={colors.line} opacity={0.5} rx={2} />,
-                ...bandRects(b.points, step).map(([start, end, level], j) => (
+                ...bandRects(bandBuckets(b.points, bucketMs), Math.max(step, bucketMs)).map(([start, end, level], j) => (
                   <Rect
                     key={`${b.key}${j}`}
                     x={x(start)}
@@ -215,24 +231,37 @@ export function TrendChart({
               </SvgText>
             ))}
 
-            {cursor !== null && shown !== null ? (
-              <>
-                <Line x1={x(shown)} x2={x(shown)} y1={PAD.top} y2={PAD.top + PLOT_HEIGHT + bandsHeight} stroke={colors.muted} strokeWidth={1} />
-                {at.map(({ series: s, point }) =>
-                  point ? <Circle key={s.key} cx={x(point[0])} cy={y(point[1])} r={3.5} fill={s.color} stroke={colors.surface} strokeWidth={1.5} /> : null,
-                )}
-              </>
-            ) : null}
           </Svg>
+        ),
+    // The scales are derived from these; colours and language change the drawing too.
+    [series, bands, thresholds, width, from, to, decimals, unit, colors, i18n.language],
+  );
+
+  if (empty) return null;
+
+  return (
+    <View onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
+      {width > 0 ? (
+        <View style={{ height }}>
+          {plot}
+
+          {cursor !== null && shown !== null ? (
+            <Svg width={width} height={height} style={{ position: 'absolute', left: 0, top: 0 }} pointerEvents="none">
+              <Line x1={x(shown)} x2={x(shown)} y1={PAD.top} y2={PAD.top + PLOT_HEIGHT + bandsHeight} stroke={colors.muted} strokeWidth={1} />
+              {at.map(({ series: s, point }) =>
+                point ? <Circle key={s.key} cx={x(point[0])} cy={y(point[1])} r={3.5} fill={s.color} stroke={colors.surface} strokeWidth={1.5} /> : null,
+              )}
+            </Svg>
+          ) : null}
 
           {/* Captures the pointer over the plot (an empty layer, so the position is measured on it). */}
           <View
             style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: AXIS_HEIGHT }}
             onPointerDown={onPointer}
             onPointerMove={onPointer}
-            onPointerLeave={(e: { nativeEvent: { pointerType?: string } }) => {
-              if (e.nativeEvent.pointerType === 'mouse') setCursor(null);
-            }}
+            onPointerUp={onLift}
+            onPointerCancel={onLift}
+            onPointerLeave={onLeave}
             accessibilityLabel={t('detail.cursorHint')}
           />
 
@@ -298,6 +327,37 @@ export function TrendChart({
       </View>
     </View>
   );
+}
+
+/**
+ * One band sample per time bucket (fixed from the epoch, like the curves): the mean intensity of
+ * its readings. A pump cycling fast becomes a shade (its share of time on) instead of hundreds
+ * of thin rectangles, and the past does not change as readings arrive.
+ */
+function bandBuckets(points: Array<[number, number, string]>, bucketMs: number): Array<[number, number, string]> {
+  if (!(bucketMs > 0)) return points;
+  const result: Array<[number, number, string]> = [];
+  let bucket = NaN;
+  let sum = 0;
+  let count = 0;
+  let text = '';
+  const flush = () => {
+    if (count > 0) result.push([bucket * bucketMs, sum / count, text]);
+  };
+  for (const [time, level, label] of points) {
+    const b = Math.floor(time / bucketMs);
+    if (b !== bucket) {
+      flush();
+      bucket = b;
+      sum = 0;
+      count = 0;
+    }
+    sum += level;
+    count += 1;
+    text = label;
+  }
+  flush();
+  return result;
 }
 
 /** Usual time between readings (the median), to tell a gap from the normal pace. */
