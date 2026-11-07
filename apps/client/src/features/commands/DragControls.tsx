@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GestureResponderEvent, LayoutChangeEvent, Text, View } from 'react-native';
+import { GestureResponderEvent, LayoutChangeEvent, Platform, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -15,22 +15,47 @@ interface DragProps {
 const TRACK = 12;
 const KNOB = 10;
 
+interface WebPointerEvent {
+  nativeEvent: { offsetX: number; offsetY: number; pointerId: number };
+  currentTarget: unknown;
+}
+
 /**
- * Drag handling shared by both controls: an empty layer over the drawing becomes the touch
- * responder and keeps it while dragging (a scroll view around it does not take the gesture
- * over), and the position is measured on that layer.
+ * Drag handling shared by both controls, on an empty layer over the drawing; the position is
+ * measured on that layer.
+ * - Phone: the layer becomes the touch responder and keeps it while dragging, so the scroll view
+ *   around it does not take the gesture over.
+ * - Web: pointer events with pointer capture, and `touch-action: none` so the browser does not
+ *   scroll the page under the finger. The responder system is not used there: the page scrolls
+ *   anyway when the mouse wheel or a finger moves it, and each refused hand-over printed a
+ *   "ScrollView doesn't take rejection well" warning.
  */
 function useDrag(disabled: boolean, toValue: (x: number, y: number) => number, onChange: (value: number) => void) {
+  const [dragging, setDragging] = useState(false);
+  if (disabled) return {};
+  if (Platform.OS === 'web') {
+    const at = (e: WebPointerEvent) => onChange(toValue(e.nativeEvent.offsetX, e.nativeEvent.offsetY));
+    const target = (e: WebPointerEvent) => e.currentTarget as { setPointerCapture?: (id: number) => void };
+    return {
+      style: { touchAction: 'none', cursor: 'pointer' },
+      onPointerDown: (e: WebPointerEvent) => {
+        target(e).setPointerCapture?.(e.nativeEvent.pointerId);
+        setDragging(true);
+        at(e);
+      },
+      onPointerMove: (e: WebPointerEvent) => dragging && at(e),
+      onPointerUp: () => setDragging(false),
+      onPointerCancel: () => setDragging(false),
+    };
+  }
   const move = (e: GestureResponderEvent) => onChange(toValue(e.nativeEvent.locationX, e.nativeEvent.locationY));
-  return disabled
-    ? {}
-    : {
-        onStartShouldSetResponder: () => true,
-        onMoveShouldSetResponder: () => true,
-        onResponderTerminationRequest: () => false,
-        onResponderGrant: move,
-        onResponderMove: move,
-      };
+  return {
+    onStartShouldSetResponder: () => true,
+    onMoveShouldSetResponder: () => true,
+    onResponderTerminationRequest: () => false,
+    onResponderGrant: move,
+    onResponderMove: move,
+  };
 }
 
 function snap(fraction: number, { min, max, step }: Pick<DragProps, 'min' | 'max' | 'step'>): number {
@@ -88,7 +113,7 @@ export function ArcDial({ value, min, max, step, disabled, onChange, children }:
           <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: cy - r * 0.62 }} className="items-center">
             {children}
           </View>
-          <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} {...drag} />
+          <View {...drag} style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }, drag.style]} />
         </View>
       ) : (
         <View style={{ height: 150 }} />
@@ -121,7 +146,7 @@ export function SliderBar({ value, min, max, step, disabled, onChange }: DragPro
             <Circle cx={left + length * fraction} cy={height / 2} r={KNOB} fill={colors.ink} stroke={colors.accent} strokeWidth={3} />
           </Svg>
         ) : null}
-        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} {...drag} />
+        <View {...drag} style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }, drag.style]} />
       </View>
       <View className="flex-row justify-between px-1">
         <Text className="text-xs text-muted">{min}</Text>
