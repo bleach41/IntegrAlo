@@ -50,6 +50,12 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e8d85cf2-3629-4523-8e4c-8299c65ec813"
+      }
+    },
+    "owner": "bleach41s-team"
   }
 }
