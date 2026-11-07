@@ -53,6 +53,7 @@ export function TrendChart({
   to,
   thresholds = [],
   bands = [],
+  legend = true,
 }: {
   series: Series[];
   unit?: string;
@@ -61,6 +62,8 @@ export function TrendChart({
   to: number;
   thresholds?: Threshold[];
   bands?: Band[];
+  /** Off when the chart has a single line already named above it. */
+  legend?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
@@ -262,7 +265,7 @@ export function TrendChart({
         <View style={{ height }} />
       )}
 
-      <View className="mt-2 flex-row flex-wrap">
+      <View className={legend ? 'mt-2 flex-row flex-wrap' : 'hidden'}>
         {series.map((s) => {
           const last = s.points[s.points.length - 1];
           return (

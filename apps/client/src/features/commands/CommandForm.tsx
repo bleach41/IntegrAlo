@@ -7,6 +7,7 @@ import { useCommand, useSendCommand } from '@/api/queries';
 import { Segmented, SmallButton } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 import { CommandStatus } from './CommandStatus';
+import { ArcDial, SliderBar } from './DragControls';
 
 interface Props {
   nodeId: string;
@@ -92,7 +93,7 @@ function SingleField({
   failed,
   onSubmit,
 }: FieldProps & { name: string; field: CommandFieldDef; current?: TelemetryValue; sent?: unknown; failed: boolean }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Until the user edits it, the stepper follows the live value (which may arrive after mounting).
   const [edited, setEdited] = useState<number | undefined>();
   const live = typeof current === 'number' ? current : undefined;
@@ -130,25 +131,65 @@ function SingleField({
   const shown = edited ?? pending ?? live ?? field.min ?? 0;
   const decimals = (String(step).split('.')[1] ?? '').length;
 
-  return (
-    <View className="flex-row items-center">
-      <StepButton label="−" disabled={disabled} onPress={() => setEdited(clamp(round(shown - step, decimals)))} />
-      <Text className={`mx-3 min-w-24 text-center text-2xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>
-        {shown.toLocaleString(i18n.language, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
-        {field.unit ? ` ${field.unit}` : ''}
-      </Text>
-      <StepButton label="+" disabled={disabled} onPress={() => setEdited(clamp(round(shown + step, decimals)))} />
-      <View className="ml-auto">
-        <SendButton
-          busy={busy}
-          disabled={disabled}
-          onPress={() => {
-            if (disabled) return;
-            submit({ [name]: shown });
-            setEdited(undefined); // shows the sent value until the node reports it (see `pending`)
-          }}
-        />
+  const text = (v: number) => `${v.toLocaleString(i18n.language, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${field.unit ? ` ${field.unit}` : ''}`;
+  const minus = <StepButton label="−" disabled={disabled} onPress={() => setEdited(clamp(round(shown - step, decimals)))} />;
+  const plus = <StepButton label="+" disabled={disabled} onPress={() => setEdited(clamp(round(shown + step, decimals)))} />;
+  const sendButton = (
+    <SendButton
+      busy={busy}
+      disabled={disabled}
+      onPress={() => {
+        if (disabled) return;
+        submit({ [name]: shown });
+        setEdited(undefined); // shows the sent value until the node reports it (see `pending`)
+      }}
+    />
+  );
+  // While a new value is being chosen, the one the node has now stays in view for comparison.
+  const reported = live !== undefined && live !== shown ? t('commands.current', { value: text(live) }) : ' ';
+  const drag = field.min !== undefined && field.max !== undefined ? field.control : undefined;
+
+  if (drag === 'arc' && field.min !== undefined && field.max !== undefined) {
+    return (
+      <View>
+        <ArcDial value={shown} min={field.min} max={field.max} step={step} disabled={disabled} onChange={setEdited}>
+          <Text className={`text-3xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>{text(shown)}</Text>
+          <Text className="mt-0.5 text-xs text-muted">{reported}</Text>
+        </ArcDial>
+        <View className="mt-3 flex-row items-center justify-center">
+          {minus}
+          <View className="w-3" />
+          {plus}
+          <View className="ml-4">{sendButton}</View>
+        </View>
       </View>
+    );
+  }
+
+  if (drag === 'slider' && field.min !== undefined && field.max !== undefined) {
+    return (
+      <View>
+        <View className="mb-1 flex-row items-baseline">
+          <Text className={`text-2xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>{text(shown)}</Text>
+          <Text className="ml-2 flex-1 text-xs text-muted">{reported}</Text>
+        </View>
+        <SliderBar value={shown} min={field.min} max={field.max} step={step} disabled={disabled} onChange={setEdited} />
+        <View className="mt-2 flex-row items-center justify-center">
+          {minus}
+          <View className="w-3" />
+          {plus}
+          <View className="ml-4">{sendButton}</View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-row flex-wrap items-center">
+      {minus}
+      <Text className={`mx-3 min-w-24 text-center text-2xl font-semibold ${disabled ? 'text-muted' : 'text-ink'}`}>{text(shown)}</Text>
+      {plus}
+      <View className="ml-auto">{sendButton}</View>
     </View>
   );
 }

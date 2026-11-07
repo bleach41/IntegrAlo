@@ -32,7 +32,7 @@
         "auto": { "es": "Automático", "en": "Automatic" }
       }
     },
-    { "key": "volume", "type": "number", "unit": "L", "decimals": 0, "label": { "es": "Volumen", "en": "Volume" } },
+    { "key": "volume", "type": "number", "unit": "L", "decimals": 0, "trend": "hidden", "label": { "es": "Volumen", "en": "Volume" } },
     {
       "key": "consumption",
       "type": "number",

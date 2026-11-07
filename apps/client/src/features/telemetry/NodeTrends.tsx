@@ -36,6 +36,7 @@ export function NodeTrends({ nodeId, manifest }: { nodeId: string; manifest: Mod
   const groups = new Map<string, NumberVariable[]>();
   const bands: Band[] = [];
   for (const variable of manifest.variables) {
+    if (variable.trend === 'hidden') continue; // repeats another variable (volume = level in litres)
     if (variable.trend === 'band') {
       bands.push({
         key: variable.key,
@@ -97,9 +98,27 @@ export function NodeTrends({ nodeId, manifest }: { nodeId: string; manifest: Mod
           const thresholds: Threshold[] = configs
             .filter((c) => c.enabled && keys.includes(c.variable))
             .map((c) => ({ key: c.key, label: t(c.type === 'high' ? 'visual.high' : 'visual.low'), value: c.threshold, type: c.type }));
+          // Named by its main variable (the first one that is not a reference line), so each chart
+          // says what it shows; with several lines the legend under it tells them apart.
+          const main = series.find((s) => !s.dashed) ?? series[0];
+          const last = main.points[main.points.length - 1];
+          const lone = series.length === 1 && (unit !== primaryUnit || bands.length === 0);
           return (
             <View key={unit} className="mb-5">
+              <View className="mb-1 flex-row items-baseline justify-between">
+                <Text className="text-sm font-medium text-ink">
+                  {main.label}
+                  {unit ? <Text className="font-normal text-muted">{` · ${unit}`}</Text> : null}
+                </Text>
+                {last ? (
+                  <Text className="text-sm text-accent">
+                    {last[1].toLocaleString(i18n.language, { maximumFractionDigits: variables.find((v) => v.key === main.key)?.decimals ?? 1 })}
+                    {unit ? ` ${unit}` : ''}
+                  </Text>
+                ) : null}
+              </View>
               <TrendChart
+                legend={!lone}
                 series={series}
                 unit={unit}
                 decimals={Math.max(...variables.map((v) => v.decimals ?? 1))}

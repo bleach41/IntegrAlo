@@ -39,7 +39,7 @@
     {
       "type": "set_setpoint",
       "label": { "es": "Consigna", "en": "Setpoint" },
-      "fields": { "setpoint": { "type": "number", "unit": "°C", "min": 16, "max": 30, "step": 0.5 } }
+      "fields": { "setpoint": { "type": "number", "unit": "°C", "min": 16, "max": 30, "step": 0.5, "control": "arc" } }
     },
     {
       "type": "set_mode",
@@ -60,7 +60,7 @@
       "type": "set_output",
       "label": { "es": "Salida manual", "en": "Manual output" },
       "enabledWhen": { "variable": "mode", "values": ["manual"] },
-      "fields": { "output": { "type": "number", "unit": "%", "min": 0, "max": 100, "step": 10 } }
+      "fields": { "output": { "type": "number", "unit": "%", "min": 0, "max": 100, "step": 10, "control": "slider" } }
     },
     {
       "type": "set_params",

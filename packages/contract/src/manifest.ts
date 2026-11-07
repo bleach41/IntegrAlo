@@ -35,10 +35,11 @@ export const VariableDefSchema = z.discriminatedUnion('type', [
     displayRange: z.object({ min: z.number(), max: z.number() }).optional(),
     /**
      * How trend charts draw it: a line (default); a dashed reference line, such as a setpoint;
-     * or a band under the main chart whose intensity follows the value within displayRange
-     * (0–100 if missing), such as the output of an actuator.
+     * a band under the main chart whose intensity follows the value within displayRange
+     * (0–100 if missing), such as the output of an actuator; or not at all, for a value that
+     * repeats another one in other units (it stays in the cards and the CSV).
      */
-    trend: z.enum(['line', 'reference', 'band']).optional(),
+    trend: z.enum(['line', 'reference', 'band', 'hidden']).optional(),
   }),
   z.object({
     ...variableCommon,
@@ -83,6 +84,11 @@ export const CommandFieldDefSchema = z.discriminatedUnion('type', [
     max: z.number().optional(),
     /** Increment of the +/− controls. */
     step: z.number().positive().optional(),
+    /**
+     * How a lone number command is set: − / + buttons only (default), or also by dragging an arc
+     * (a setpoint) or a bar (an output). Both need min and max.
+     */
+    control: z.enum(['stepper', 'arc', 'slider']).optional(),
   }),
   z.object({
     type: z.literal('enum'),
@@ -165,6 +171,11 @@ export const ModuleManifestSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: `duplicated command "${type}"` });
     }
     for (const command of manifest.commands) {
+      for (const [name, field] of Object.entries(command.fields)) {
+        if (field.type === 'number' && (field.control === 'arc' || field.control === 'slider') && (field.min === undefined || field.max === undefined)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `field "${name}" of command "${command.type}" needs min and max for a ${field.control}` });
+        }
+      }
       const when = command.enabledWhen;
       if (when && !keys.includes(when.variable)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: `command "${command.type}" is enabled by unknown variable "${when.variable}"` });
