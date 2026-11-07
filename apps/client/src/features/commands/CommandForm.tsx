@@ -8,6 +8,7 @@ import { Segmented, SmallButton } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 import { CommandStatus } from './CommandStatus';
 import { ArcDial, SliderBar } from './DragControls';
+import { fieldValue } from './summary';
 
 interface Props {
   nodeId: string;
@@ -17,6 +18,10 @@ interface Props {
   /** Latest telemetry: a field named like a variable (setpoint, mode) starts from its value. */
   current: Record<string, TelemetryValue>;
   disabled: boolean;
+  /** Values the node holds now (from its last confirmation), shown next to each field. */
+  known?: Record<string, TelemetryValue> | null;
+  /** False inside a folding section, whose header already names the command. */
+  showTitle?: boolean;
 }
 
 /**
@@ -27,7 +32,7 @@ interface Props {
  * A command with `enabledWhen` (the pump, in manual mode only) is shown disabled, with
  * the reason, while the condition does not hold.
  */
-export function CommandForm({ nodeId, command, manifest, current, disabled }: Props) {
+export function CommandForm({ nodeId, command, manifest, current, disabled, known, showTitle = true }: Props) {
   const { t, i18n } = useTranslation();
   const send = useSendCommand(nodeId);
   const [commandId, setCommandId] = useState<string>();
@@ -57,7 +62,7 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
 
   return (
     <View className="mb-5">
-      <Text className={`mb-2 text-sm font-medium ${locked ? 'text-muted' : 'text-ink'}`}>{title}</Text>
+      {showTitle ? <Text className={`mb-2 text-sm font-medium ${locked ? 'text-muted' : 'text-ink'}`}>{title}</Text> : null}
       {fields.length === 1 && !command.partial ? (
         <SingleField
           name={fields[0][0]}
@@ -71,7 +76,7 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
         />
       ) : (
         <>
-          <MultiFieldForm fields={fields} disabled={disabled || locked} busy={waiting} onSubmit={submit} />
+          <MultiFieldForm fields={fields} known={known} disabled={disabled || locked} busy={waiting} onSubmit={submit} />
           <View className="mt-2">{status('left')}</View>
         </>
       )}
@@ -228,7 +233,13 @@ function SingleField({
   );
 }
 
-function MultiFieldForm({ fields, disabled, busy, onSubmit }: FieldProps & { fields: Array<[string, CommandFieldDef]> }) {
+function MultiFieldForm({
+  fields,
+  known,
+  disabled,
+  busy,
+  onSubmit,
+}: FieldProps & { fields: Array<[string, CommandFieldDef]>; known?: Record<string, TelemetryValue> | null }) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -249,10 +260,15 @@ function MultiFieldForm({ fields, disabled, busy, onSubmit }: FieldProps & { fie
     <View className="rounded-xl border border-line p-3">
       {fields.map(([name, field]) => (
         <View key={name} className="mb-3">
-          <Text className="mb-1 text-xs text-muted">
-            {localize(field.label, i18n.language, name)}
-            {field.type === 'number' && field.unit ? ` (${field.unit})` : ''}
-          </Text>
+          <View className="mb-1 flex-row items-baseline justify-between">
+            <Text className="flex-1 text-xs text-muted">
+              {localize(field.label, i18n.language, name)}
+              {field.type === 'number' && field.unit ? ` (${field.unit})` : ''}
+            </Text>
+            {known?.[name] !== undefined ? (
+              <Text className="ml-2 text-xs text-accent">{t('commands.now', { value: fieldValue(field, known[name], i18n.language) })}</Text>
+            ) : null}
+          </View>
           {field.type === 'enum' ? (
             <Segmented
               value={values[name] ?? ''}

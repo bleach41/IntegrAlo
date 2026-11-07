@@ -20,6 +20,7 @@ export const queryKeys = {
   latest: (nodeId: string) => ['telemetry', 'latest', nodeId] as const,
   history: (nodeId: string) => ['telemetry', 'history', nodeId] as const,
   command: (commandId: string) => ['command', commandId] as const,
+  nodeState: (nodeId: string) => ['commands', 'state', nodeId] as const,
   openAlarms: ['alarms', 'open'] as const,
 };
 
@@ -120,6 +121,23 @@ export function useSendCommand(nodeId: string) {
 }
 
 /** State of a sent command, updated live (sent → confirmed / rejected / unconfirmed). */
+/**
+ * Last state the node reported when it confirmed a command (its parameters, mode, simulation…):
+ * the node sends its whole state in every confirmation, so this is what it holds now even for
+ * settings it does not publish in its telemetry. Null while it has confirmed nothing.
+ */
+export function useNodeState(nodeId: string, enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.nodeState(nodeId),
+    enabled,
+    queryFn: async () => {
+      const commands = await api<CommandRecord[]>('GET', `/nodes/${nodeId}/commands?limit=50`);
+      return commands.find((c) => c.status === 'confirmed' && c.state)?.state ?? null;
+    },
+  });
+}
+
 export function useCommand(commandId: string | undefined) {
   const api = useApi();
   return useQuery({

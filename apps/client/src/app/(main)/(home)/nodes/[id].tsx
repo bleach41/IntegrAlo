@@ -1,15 +1,18 @@
-import { PERMISSIONS, commandPermission, hasPermission } from '@integralo/contract';
+import { PERMISSIONS, commandPermission, hasPermission, localize } from '@integralo/contract';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { useLatestTelemetry, useModules, useNodes } from '@/api/queries';
+import { SlidersHorizontal, BellRing, Settings2 } from 'lucide-react-native';
+import { useAlarmConfigs, useLatestTelemetry, useModules, useNodeState, useNodes } from '@/api/queries';
+import { Collapsible } from '@/components/Collapsible';
 import { BackButton } from '@/components/TopBar';
 import { Card, Screen } from '@/components/ui';
 import { AlarmConfigCard } from '@/features/alarms/AlarmConfigCard';
 import { NodeAlarms } from '@/features/alarms/NodeAlarms';
 import { useSession } from '@/features/auth/session.store';
 import { CommandForm } from '@/features/commands/CommandForm';
+import { commandSummary } from '@/features/commands/summary';
 import { GenericSummary } from '@/features/nodes/GenericSummary';
 import { NodeHeader } from '@/features/nodes/NodeCard';
 import { NodeManageCard } from '@/features/nodes/NodeManageCard';
@@ -32,14 +35,20 @@ function hasSynoptic(manifest: ModuleManifest): boolean {
  * summary view): current values, trend charts, open alarms and the commands the user may
  * send. Commands that change one value are under "Control"; those that change several
  * settings, under "Engineering". On wide screens monitoring and commands sit side by side.
+ * Everyday controls are always open; engineering forms, alarm settings and node management fold
+ * (closed by default, with a summary of their current values), so the node fits on a phone
+ * without scrolling past settings that are seldom touched.
  */
 export default function NodeDetailScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const permissions = useSession((s) => s.user?.permissions ?? []);
   const node = useNodes().data?.find((n) => n.id === id && n.approval === 'approved');
   const manifest = useModules().data?.find((m) => m.id === node?.module);
   const latest = useLatestTelemetry(id, !!node).data;
+  const canEngineer = (manifest?.commands ?? []).some((c) => c.partial && hasPermission(permissions, commandPermission(node?.module ?? '', c.type)));
+  const known = useNodeState(id, !!node && canEngineer).data;
+  const alarmConfigs = useAlarmConfigs(id).data ?? [];
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -107,24 +116,51 @@ export default function NodeDetailScreen() {
             </Section>
           ) : null}
 
-          {engineering.length > 0 ? (
+          {engineering.length > 0 && manifest ? (
             <Section title={t('detail.engineering')}>
-              {engineering.map((command) => (
-                <CommandForm key={command.type} nodeId={node.id} command={command} manifest={manifest} current={current} disabled={!node.online} />
+              {engineering.map((command, i) => (
+                <View key={command.type} className={i > 0 ? 'border-t border-line' : ''}>
+                  <Collapsible
+                    id={`${node.module}.${command.type}`}
+                    title={localize(command.label, i18n.language, command.type)}
+                    summary={commandSummary(command, known, i18n.language)}
+                    icon={SlidersHorizontal}
+                  >
+                    <CommandForm
+                      nodeId={node.id}
+                      command={command}
+                      manifest={manifest}
+                      current={current}
+                      known={known}
+                      showTitle={false}
+                      disabled={!node.online}
+                    />
+                  </Collapsible>
+                </View>
               ))}
             </Section>
           ) : null}
 
           {manifest && hasPermission(permissions, PERMISSIONS.alarmsConfigure) ? (
-            <Section title={t('alarmConfig.title')}>
-              <AlarmConfigCard nodeId={node.id} manifest={manifest} />
-            </Section>
+            <Card className="mb-4 py-1">
+              <Collapsible
+                id="alarm-config"
+                title={t('alarmConfig.title')}
+                summary={t('alarmConfig.summary', { count: alarmConfigs.length, enabled: alarmConfigs.filter((c) => c.enabled).length })}
+                icon={BellRing}
+                large
+              >
+                <AlarmConfigCard nodeId={node.id} manifest={manifest} />
+              </Collapsible>
+            </Card>
           ) : null}
 
           {hasPermission(permissions, PERMISSIONS.nodesManage) ? (
-            <Section title={t('manage.title')}>
-              <NodeManageCard key={node.id} node={node} />
-            </Section>
+            <Card className="mb-4 py-1">
+              <Collapsible id="node-manage" title={t('manage.title')} summary={t('manage.summary')} icon={Settings2} large>
+                <NodeManageCard key={node.id} node={node} />
+              </Collapsible>
+            </Card>
           ) : null}
         </View>
       </View>

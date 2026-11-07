@@ -88,6 +88,7 @@ const en: typeof es = {
   },
   alarmConfig: {
     title: 'Alarm settings',
+    summary: '{{count}} alarms · {{enabled}} enabled',
     hint: 'Threshold: value that raises the alarm. Deadband: how far the value must return to clear it. Delay: seconds the condition must last.',
     threshold: 'Threshold',
     deadband: 'Deadband',
@@ -168,6 +169,7 @@ const en: typeof es = {
   },
   manage: {
     title: 'Node management',
+    summary: 'Rename · disconnect or retire',
     name: 'Name',
     saveName: 'Save name',
     saved: 'Saved',
@@ -205,6 +207,7 @@ const en: typeof es = {
     offline: 'The node is offline: commands cannot be sent.',
     nothingToSend: 'Change at least one value.',
     current: 'Current: {{value}}',
+    now: 'now {{value}}',
     onlyWhen: 'Available only in {{values}} mode.',
     reasons: {
       out_of_range: 'value outside the allowed range',

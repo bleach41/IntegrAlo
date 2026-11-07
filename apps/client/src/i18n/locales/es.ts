@@ -86,6 +86,7 @@ const es = {
   },
   alarmConfig: {
     title: 'Configuración de alarmas',
+    summary: '{{count}} alarmas · {{enabled}} activas',
     hint: 'Umbral: valor que dispara la alarma. Banda muerta: cuánto debe volver el valor para normalizarla. Retardo: segundos que debe durar la condición.',
     threshold: 'Umbral',
     deadband: 'Banda muerta',
@@ -166,6 +167,7 @@ const es = {
   },
   manage: {
     title: 'Gestión del nodo',
+    summary: 'Renombrar · desconectar o retirar',
     name: 'Nombre',
     saveName: 'Guardar nombre',
     saved: 'Guardado',
@@ -203,6 +205,7 @@ const es = {
     offline: 'El nodo está fuera de línea: no se pueden enviar órdenes.',
     nothingToSend: 'Cambia al menos un valor.',
     current: 'Actual: {{value}}',
+    now: 'actual {{value}}',
     onlyWhen: 'Disponible solo en modo {{values}}.',
     reasons: {
       out_of_range: 'valor fuera del rango permitido',

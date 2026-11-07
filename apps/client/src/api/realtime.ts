@@ -76,6 +76,8 @@ export function useRealtime(): void {
           break;
         case 'command':
           queryClient.setQueryData(queryKeys.command(message.data.id), message.data);
+          // A confirmation carries the node's whole state: it is the newest known one.
+          if (message.data.status === 'confirmed' && message.data.state) queryClient.setQueryData(queryKeys.nodeState(message.data.nodeId), message.data.state);
           break;
       }
     };
