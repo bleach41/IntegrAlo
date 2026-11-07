@@ -2,7 +2,7 @@ import { localize, type AuditCategory, type AuditEvent } from '@integralo/contra
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { localDay, nextLocalDay, previousLocalDay, useAuditLog, useModules, useNodes } from '@/api/queries';
 import { TopBar } from '@/components/TopBar';
 import { Card, Screen, SmallButton } from '@/components/ui';
@@ -29,13 +29,16 @@ export default function AuditScreen() {
       inTabs
       header={<TopBar title={t('audit.title')} subtitle={t('audit.subtitle')} />}
       sticky={
-        // The filters stay at the top while the list scrolls.
-        <View className="mb-2 flex-row flex-wrap">
-          <Chip label={t('audit.all')} selected={!category} onPress={() => setCategory(undefined)} />
-          {CATEGORIES.map((c) => (
-            <Chip key={c} label={t(`audit.categories.${c}`)} selected={category === c} onPress={() => setCategory(c)} />
-          ))}
+        // The filters stay at the top while the list scrolls: the day across the width, then the
+        // categories in a single row that slides sideways when it does not fit.
+        <View className="mb-2">
           <DayPicker day={day} onChange={setDay} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1" contentContainerClassName="px-1">
+            <Chip label={t('audit.all')} selected={!category} onPress={() => setCategory(undefined)} />
+            {CATEGORIES.map((c) => (
+              <Chip key={c} label={t(`audit.categories.${c}`)} selected={category === c} onPress={() => setCategory(c)} />
+            ))}
+          </ScrollView>
         </View>
       }
     >
@@ -71,8 +74,8 @@ function DayPicker({ day, onChange }: { day: number | undefined; onChange: (day:
           ? t('audit.yesterday')
           : new Date(day).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   return (
-    <View className="w-full flex-row flex-wrap items-center">
-      <View className={`mb-2 mr-2 flex-row items-center rounded-full border ${day === undefined ? 'border-line' : 'border-accent bg-accent/15'}`}>
+    <View className="mb-3 w-full flex-row items-center">
+      <View className={`mr-2 flex-1 flex-row items-center justify-between rounded-full border ${day === undefined ? 'border-line' : 'border-accent bg-accent/15'}`}>
         <Pressable
           onPress={() => onChange(day === undefined ? today : previousLocalDay(shown))}
           accessibilityRole="button"
@@ -97,18 +100,18 @@ function DayPicker({ day, onChange }: { day: number | undefined; onChange: (day:
           <ChevronRight size={16} color={day === undefined ? colors.muted : colors.accent} />
         </Pressable>
       </View>
-      <Chip label={t('audit.wholeHistory')} selected={day === undefined} onPress={() => onChange(undefined)} />
+      <Chip label={t('audit.wholeHistory')} selected={day === undefined} onPress={() => onChange(undefined)} inline />
     </View>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+function Chip({ label, selected, onPress, inline }: { label: string; selected: boolean; onPress: () => void; inline?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`mb-2 mr-2 rounded-full border px-3 py-1.5 ${selected ? 'border-accent bg-accent/15' : 'border-line active:bg-line'}`}
+      className={`${inline ? '' : 'mr-2'} rounded-full border px-3 py-1.5 ${selected ? 'border-accent bg-accent/15' : 'border-line active:bg-line'}`}
     >
       <Text className={`text-xs font-medium ${selected ? 'text-accent' : 'text-muted'}`}>{label}</Text>
     </Pressable>
