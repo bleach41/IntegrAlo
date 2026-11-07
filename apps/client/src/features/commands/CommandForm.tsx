@@ -61,11 +61,11 @@ export function CommandForm({ nodeId, command, manifest, current, disabled }: Pr
       ) : (
         <MultiFieldForm fields={fields} disabled={disabled || locked} busy={waiting} onSubmit={submit} />
       )}
-      {locked && when ? (
-        <Text className="mt-2 text-xs text-muted">{t('commands.onlyWhen', { values: valueNames(manifest, when.variable, when.values, i18n.language) })}</Text>
-      ) : (
-        <CommandStatus commandId={commandId} failed={send.isError} />
-      )}
+      <CommandStatus
+        commandId={locked ? undefined : commandId}
+        failed={!locked && send.isError}
+        hint={locked && when ? t('commands.onlyWhen', { values: valueNames(manifest, when.variable, when.values, i18n.language) }) : undefined}
+      />
     </View>
   );
 }
