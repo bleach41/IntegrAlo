@@ -3,11 +3,17 @@ import { QrCode, Radar, ShieldAlert, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Brand, Button, Card, ErrorText, Field, Screen, SmallButton, Title } from '@/components/ui';
 import { Message, connectionError } from '@/features/auth/errors';
 import { useSession } from '@/features/auth/session.store';
 import { FoundServer, scanLocalNetwork } from '@/features/pairing/discovery';
 import { useTheme } from '@/theme/ThemeProvider';
+
+/** Search results change the height of the card: it grows (or shrinks) in this time instead of jumping. */
+const GROW_MS = 220;
+/** A search on this computer alone ends in a few ms: below this the spinner would just flicker. */
+const MIN_SEARCH_MS = 600;
 
 /**
  * How the app finds its server, from the most to the least convenient: scanning the
@@ -47,8 +53,10 @@ export default function ConnectScreen() {
     setSearching(true);
     setError(null);
     setFound([]);
+    const started = Date.now();
     try {
       const servers = await scanLocalNetwork((s) => setFound((list) => [...(list ?? []), s]));
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, MIN_SEARCH_MS - (Date.now() - started))));
       setFound(servers);
     } catch {
       setError({ key: 'connect.noNetwork' });
@@ -77,23 +85,25 @@ export default function ConnectScreen() {
         ) : null}
 
         {/* The three ways, on the phone and on the web (where the QR needs a camera the browser
-            allows: see the scan screen). */}
-        <>
-            <Option icon={<QrCode size={20} color={colors.accent} />} title={t('connect.scan')} hint={t('connect.scanHint')} onPress={() => router.push('/scan')} />
-            <Option
-              icon={searching ? <ActivityIndicator color={colors.accent} /> : <Radar size={20} color={colors.accent} />}
-              title={searching ? t('connect.searching') : t('connect.search')}
-              hint={t('connect.searchHint')}
-              onPress={searching ? undefined : () => void search()}
-            />
-            {found !== null ? (
-              <View className="mb-3">
-                {found.length === 0 && !searching ? <Text className="px-1 text-xs text-muted">{t('connect.noneFound')}</Text> : null}
-                {found.map((server) => {
-                  const trusted = paired?.publicKey === server.health.publicKey;
-                  return (
+              allows: see the scan screen). */}
+        <Option icon={<QrCode size={20} color={colors.accent} />} title={t('connect.scan')} hint={t('connect.scanHint')} onPress={() => router.push('/scan')} />
+        <Option
+          icon={searching ? <ActivityIndicator color={colors.accent} /> : <Radar size={20} color={colors.accent} />}
+          title={searching ? t('connect.searching') : t('connect.search')}
+          hint={t('connect.searchHint')}
+          onPress={searching ? undefined : () => void search()}
+        />
+        {/* Shown only when it has something to show (an empty list would already push the rest
+              down by its margin), inside a space that grows smoothly to fit it. */}
+        <GrowingSpace>
+          {found !== null && (found.length > 0 || !searching) ? (
+            <View className="mb-3">
+              {found.length === 0 ? <Text className="px-1 text-xs text-muted">{t('connect.noneFound')}</Text> : null}
+              {found.map((server) => {
+                const trusted = paired?.publicKey === server.health.publicKey;
+                return (
+                  <Animated.View key={server.address} entering={FadeIn.duration(180)}>
                     <Pressable
-                      key={server.address}
                       onPress={() => void connectTo(server.address)}
                       accessibilityRole="button"
                       className="mb-2 flex-row items-center rounded-xl border border-line px-3 py-2.5 active:bg-line"
@@ -110,13 +120,14 @@ export default function ConnectScreen() {
                         <Text className="text-xs font-medium text-accent">{t('connect.paired')}</Text>
                       ) : null}
                     </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
-            <Text className="mb-2 mt-1 text-xs uppercase tracking-wide text-muted">{t('connect.orType')}</Text>
-        </>
+                  </Animated.View>
+                );
+              })}
+            </View>
+          ) : null}
+        </GrowingSpace>
 
+        <Text className="mb-2 mt-1 text-xs uppercase tracking-wide text-muted">{t('connect.orType')}</Text>
         <Field
           label={t('connect.address')}
           hint={t('connect.addressHint')}
@@ -131,6 +142,29 @@ export default function ConnectScreen() {
         <Button label={t('connect.connect')} onPress={() => void connectTo(address)} busy={busy === address} />
       </Card>
     </Screen>
+  );
+}
+
+/**
+ * A space whose height follows its content smoothly: the content is laid out at its natural
+ * height (absolutely positioned) and the space animates to it, so whatever is below slides.
+ */
+function GrowingSpace({ children }: { children: React.ReactNode }) {
+  const height = useSharedValue(0);
+  const style = useAnimatedStyle(() => ({ height: height.value }));
+  return (
+    <Animated.View style={[{ overflow: 'hidden' }, style]}>
+      <View
+        style={{ position: 'absolute', left: 0, right: 0, top: 0 }}
+        onLayout={(e) => {
+          height.value = withTiming(e.nativeEvent.layout.height, {
+            duration: GROW_MS,
+          });
+        }}
+      >
+        {children}
+      </View>
+    </Animated.View>
   );
 }
 
