@@ -45,3 +45,20 @@ test('PI with zero error keeps the integral term as output', () => {
   const u = c.compute(24, 24, 20, 0.02, 10); // e = 0, u = ki · integral
   assert.ok(Math.abs(u - 0.2) < 1e-9);
 });
+
+test('PI bumpless retuning: changing ki at steady state keeps the output', () => {
+  const c = new PiController();
+  c.compute(25, 24, 20, 0.2, 120); // builds up an integral term
+  const before = c.compute(24, 24, 20, 0.2, 120); // e = 0: output is the integral term
+  const after = c.compute(24, 24, 20, 0.02, 120); // ki lowered ten times
+  assert.ok(before > 0);
+  assert.ok(Math.abs(after - before) < 1e-9);
+});
+
+test('PI bumpless retuning: changing kp keeps the output continuous', () => {
+  const c = new PiController();
+  c.compute(24.5, 24, 20, 0.02, 2); // e = 0.5
+  const before = c.compute(24.5, 24, 20, 0, 2); // ki 0: the integral term stays put
+  const after = c.compute(24.5, 24, 40, 0, 2); // kp doubled with the same error
+  assert.ok(Math.abs(after - before) < 1e-9);
+});
