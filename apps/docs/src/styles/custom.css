@@ -49,3 +49,8 @@
   font-size: var(--sl-text-xs);
   color: var(--sl-color-gray-3);
 }
+
+/* Changes page: CHANGELOG.md starts with its own "# Changelog" title. */
+.changelog > h1 {
+  display: none;
+}

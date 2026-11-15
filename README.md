@@ -84,10 +84,16 @@ Cada página es un archivo Markdown en `apps/docs/src/content/docs/`; la barra l
 3. Se genera el instalador con ese número (`pnpm installer`) y se adjunta junto con el APK y el firmware:
 
 ```bash
-gh release upload vX.Y.Z release/IntegrAlo-Setup-X.Y.Z.exe
+gh release upload vX.Y.Z release/IntegrAlo-Setup-X.Y.Z.exe release/IntegrAlo-X.Y.Z.apk
 ```
 
-La página de descargas se actualiza sola, con el tamaño y la suma SHA-256 de cada archivo.
+4. Se vuelve a publicar la web, que toma de la versión los enlaces, el tamaño y la suma SHA-256 de cada archivo. Hace falta lanzarlo a mano, porque ni la versión creada por release-please ni la subida de archivos disparan otros flujos:
+
+```bash
+gh workflow run docs.yml
+```
+
+La página «Cambios» de la web muestra el `CHANGELOG.md` en cada publicación.
 
 ## Licencia
 
