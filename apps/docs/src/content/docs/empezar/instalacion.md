@@ -15,7 +15,7 @@ automático.
 
 ## Pasos
 
-1. Descarga el instalador desde [Descargas](/descargas/).
+1. Descarga el instalador desde [Descargas](../../descargas/).
 2. Ejecútalo como administrador y sigue el asistente.
 
 ## Qué hace el instalador

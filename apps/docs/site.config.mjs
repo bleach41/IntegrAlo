@@ -8,7 +8,7 @@
  *   site is https://<user>.github.io and base is /<repo>.
  */
 export default {
-  repo: '',
-  site: undefined,
-  base: undefined,
+  repo: 'https://github.com/bleach41/IntegrAlo',
+  site: 'https://bleach41.github.io',
+  base: '/IntegrAlo',
 };

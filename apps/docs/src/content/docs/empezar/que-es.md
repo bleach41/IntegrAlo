@@ -19,4 +19,4 @@ Todo funciona dentro de la red local, sin servicios externos.
 
 ## Siguiente paso
 
-Instala el servidor siguiendo la [guía de instalación](/empezar/instalacion/).
+Instala el servidor siguiendo la [guía de instalación](../instalacion/).
