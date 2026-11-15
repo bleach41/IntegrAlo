@@ -1,0 +1,57 @@
+# Builds the documentation site (apps/docs) and publishes it on GitHub Pages.
+# Runs when the docs or the contract change on main, when a release is published (so the
+# downloads page shows the new files) and on demand from the Actions tab.
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - 'packages/contract/**'
+      - '.github/workflows/docs.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history: "Última actualización" of each page comes from git
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install (docs and the packages it uses)
+        run: pnpm install --frozen-lockfile --filter @integralo/docs...
+      - name: Build the contract
+        run: pnpm --filter @integralo/contract build
+      - name: Build the site
+        run: pnpm --filter @integralo/docs build:docs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/docs/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

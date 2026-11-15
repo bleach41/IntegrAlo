@@ -9,6 +9,8 @@ Plataforma modular local para supervisión y control. Caso de estudio: módulo d
 | `packages/contract` | Contrato compartido: manifiesto de módulo, mensajes y temas MQTT, con validación en tiempo de ejecución |
 | `modules/temperature` | Manifiesto del módulo de temperatura |
 
+Documentación y descargas: sitio en `apps/docs` (Astro + Starlight), publicado en GitHub Pages.
+
 ## Requisitos
 
 - Node.js 22
@@ -64,3 +66,29 @@ pnpm test:service
 ```
 
 Sin permisos de administrador hace una prueba rápida con `test` de WinSW: arranca el servicio, lo detiene al segundo y comprueba la parada por Ctrl+C, los registros y que no quede nada en marcha. Desde una terminal abierta como administrador hace la prueba completa con `testwait`: además comprueba que el núcleo y el broker quedan enlazados, la carpeta de datos, el panel y el orden de parada. La prueba nunca abre ventanas de control de cuentas (UAC).
+
+## Sitio de documentación
+
+```bash
+pnpm --filter @integralo/contract build   # la referencia MQTT se genera desde el contrato
+pnpm --filter @integralo/docs dev         # http://localhost:4321
+pnpm --filter @integralo/docs build:docs  # sitio estático en apps/docs/dist
+```
+
+Cada página es un archivo Markdown en `apps/docs/src/content/docs/`; la barra lateral se arma con las carpetas y el campo `sidebar.order`. La dirección del repositorio y de la web se configura en `apps/docs/site.config.mjs`. El flujo `.github/workflows/docs.yml` publica el sitio en GitHub Pages al cambiar la documentación en `main` y al publicar una versión.
+
+## Publicar una versión
+
+1. Los mensajes de commit siguen Conventional Commits (`feat:`, `fix:`…). El flujo `release-please` mantiene abierta una solicitud de cambio con el número de la próxima versión y su `CHANGELOG.md`.
+2. Al aceptarla se crean la etiqueta `vX.Y.Z` y la versión en GitHub Releases, y `package.json` queda con el número nuevo.
+3. Se genera el instalador con ese número (`pnpm installer`) y se adjunta junto con el APK y el firmware:
+
+```bash
+gh release upload vX.Y.Z release/IntegrAlo-Setup-X.Y.Z.exe
+```
+
+La página de descargas se actualiza sola, con el tamaño y la suma SHA-256 de cada archivo.
+
+## Licencia
+
+MIT, ver `LICENSE`.

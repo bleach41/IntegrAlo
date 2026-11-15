@@ -1,0 +1,23 @@
+# Keeps a release pull request open with the next version number and its CHANGELOG.md,
+# computed from the Conventional Commits on main. Merging that pull request creates the tag
+# and the GitHub release; the installer, APK and firmware are then attached to it
+# (see "Publicar una versión" in README.md).
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
