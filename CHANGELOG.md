@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/bleach41/IntegrAlo/compare/v0.1.0...v0.1.1) (2026-11-15)
+
+
+### Documentación
+
+* show CHANGELOG.md on the changes page and document the release steps ([bea752b](https://github.com/bleach41/IntegrAlo/commit/bea752b7d058f5fe65bc5a3522f0ba166ccc9a99))
+
 ## 0.1.0 (2026-11-15)
 
 
