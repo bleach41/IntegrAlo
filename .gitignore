@@ -9,6 +9,7 @@ release/
 *.sqlite-wal
 *.sqlite-shm
 .expo/
+.astro/
 .state/
 .data/
 *.csv

@@ -1,0 +1,47 @@
+---
+title: IntegrAlo
+description: Plataforma modular local para supervisión y control, con servidor propio, app web y móvil y nodos ESP32 por MQTT.
+template: splash
+editUrl: false
+lastUpdated: false
+hero:
+  title: Supervisa y controla tus equipos desde tu propia red
+  tagline: Servidor local, app web y móvil, y nodos ESP32 conectados por MQTT. Sin depender de Internet.
+  image:
+    html: |
+      <div class="panel-preview" aria-label="Ejemplo del panel de IntegrAlo">
+        <div class="pp-node">Habitación · nodo esp32-01</div>
+        <div class="pp-value">23,4 °C</div>
+        <div class="pp-detail">Consigna 24,0 °C · climatización encendida</div>
+        <svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke-width="2.5" points="0,30 25,28 50,24 75,26 100,18 125,20 150,14 175,16 200,12"/></svg>
+        <div class="pp-caption">Ejemplo ilustrativo del módulo de temperatura</div>
+      </div>
+  actions:
+    - text: Descargar
+      link: /descargas/
+      icon: download
+      variant: primary
+    - text: Leer la guía
+      link: /empezar/que-es/
+      icon: right-arrow
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Modular" icon="puzzle">
+    Cada función es un módulo con su propio manifiesto. Se añaden módulos nuevos sin cambiar el
+    núcleo.
+  </Card>
+  <Card title="Local" icon="laptop">
+    El servidor corre en un equipo de tu red. Los datos se quedan ahí y todo funciona sin conexión
+    a Internet.
+  </Card>
+  <Card title="ESP32 y MQTT" icon="seti:c">
+    Los nodos se identifican, envían sus lecturas y confirman cada orden recibida.
+  </Card>
+  <Card title="Web y móvil" icon="mobile-android">
+    La misma app desde el navegador o desde el teléfono, vinculada al servidor con un código QR.
+  </Card>
+</CardGrid>

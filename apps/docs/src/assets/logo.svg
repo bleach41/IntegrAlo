@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="IntegrAlo">
+  <defs>
+    <linearGradient id="integralo-logo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="92" height="92" rx="20" fill="url(#integralo-logo)"/>
+  <g stroke="#fff" stroke-width="4.5">
+    <line x1="50" y1="53" x2="50" y2="26"/>
+    <line x1="50" y1="53" x2="73.4" y2="66.5"/>
+    <line x1="50" y1="53" x2="26.6" y2="66.5"/>
+  </g>
+  <g fill="#fff">
+    <circle cx="50" cy="53" r="11.5"/>
+    <circle cx="50" cy="26" r="7.5"/>
+    <circle cx="73.4" cy="66.5" r="7.5"/>
+    <circle cx="26.6" cy="66.5" r="7.5"/>
+  </g>
+  <circle cx="50" cy="53" r="5.2" fill="#0a966b"/>
+</svg>

@@ -1,0 +1,51 @@
+/* IntegrAlo green as the only accent: buttons, links and active items. Neutral greys stay
+   Starlight's own. The values are the logo gradient (#10b981 to #047857) and its tints. */
+:root {
+  --sl-color-accent-low: #063d2f;
+  --sl-color-accent: #10b981;
+  --sl-color-accent-high: #a7f3d0;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #d1fae5;
+  --sl-color-accent: #047857;
+  --sl-color-accent-high: #064e3b;
+}
+
+/* Landing: panel preview on the right of the hero (variant B). */
+.panel-preview {
+  width: min(100%, 22rem);
+  padding: 1.25rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  background: var(--sl-color-black);
+  text-align: start;
+}
+.panel-preview .pp-node {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+.panel-preview .pp-value {
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--sl-color-white);
+}
+.panel-preview .pp-detail {
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+.panel-preview svg {
+  display: block;
+  width: 100%;
+  height: 3.5rem;
+  margin-top: 0.75rem;
+}
+.panel-preview polyline {
+  stroke: var(--sl-color-accent);
+}
+.panel-preview .pp-caption {
+  margin-top: 0.5rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}

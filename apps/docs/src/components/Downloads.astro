@@ -1,0 +1,172 @@
+---
+/**
+ * Downloads page body. The platform matching the visitor's system is shown first and
+ * highlighted (decided in the browser; without JavaScript the Windows server stays first).
+ */
+import { Icon, LinkButton } from '@astrojs/starlight/components';
+import { PLATFORMS } from '../data/platforms';
+import { formatDate, formatSize, getRelease } from '../lib/release';
+
+const release = await getRelease();
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<p class="dl-meta">
+  {`Versión ${release.version}`}{release.date && ` · publicada el ${formatDate(release.date)}`}{' · '}<a href={`${base}/cambios/`}>Ver cambios</a>
+</p>
+
+{!release.published && (
+  <p class="dl-pending">
+    Esta versión todavía no está publicada. Los archivos aparecerán aquí cuando se publiquen en
+    GitHub Releases.
+  </p>
+)}
+
+<div class="dl-list">
+  {PLATFORMS.map((platform, index) => {
+    const asset = release.assets[platform.id];
+    return (
+      <section class:list={['dl-item', { featured: index === 0 }]} data-platform={platform.id}>
+        <div class="dl-head">
+          <Icon name={platform.icon} size="1.75rem" class="dl-icon" />
+          <div class="dl-text">
+            <h3>{platform.title}</h3>
+            <p class="dl-kind">
+              {platform.kind}
+              {asset && <> · {formatSize(asset.size)}</>}
+              <span class="dl-recommended"> · Recomendado para tu equipo</span>
+            </p>
+          </div>
+          {asset ? (
+            <LinkButton href={asset.url} icon="download" iconPlacement="start" variant="primary">
+              Descargar
+            </LinkButton>
+          ) : (
+            <span class="dl-unavailable">Aún no disponible</span>
+          )}
+        </div>
+        <ul class="dl-req">
+          {platform.requirements.map((item) => <li>{item}</li>)}
+        </ul>
+        <p class="dl-links">
+          <a href={`${base}${platform.guide.link}`}>{platform.guide.label}</a>
+        </p>
+        {asset?.sha256 && (
+          <p class="dl-sha">
+            SHA-256: <code>{asset.sha256}</code>
+          </p>
+        )}
+      </section>
+    );
+  })}
+</div>
+
+<section class="dl-extra">
+  <h2>La app web</h2>
+  <p>
+    No se descarga: viene incluida en el servidor. Con el servidor en marcha, se abre desde
+    cualquier navegador de la red local en el puerto 4100.
+  </p>
+
+  <h2>Comprobar un archivo descargado</h2>
+  <p>
+    Con una conexión inestable, un archivo puede llegar incompleto. Compara su suma SHA-256 con la
+    que aparece arriba. En Windows, desde PowerShell:
+  </p>
+  <pre><code>Get-FileHash .\IntegrAlo-Setup-{release.version}.exe -Algorithm SHA256</code></pre>
+
+  <h2>Versiones anteriores</h2>
+  <p>
+    {release.allReleasesUrl ? (
+      <>Todas las versiones publicadas están en <a href={release.allReleasesUrl}>GitHub Releases</a>.</>
+    ) : (
+      <>Todavía no hay versiones anteriores publicadas.</>
+    )}
+  </p>
+</section>
+
+<script>
+  const ua = navigator.userAgent;
+  const detected = /Android/i.test(ua) ? 'android' : /Windows/i.test(ua) ? 'windows' : null;
+  const list = document.querySelector('.dl-list');
+  const match = detected && list?.querySelector(`[data-platform="${detected}"]`);
+  if (list && match) {
+    list.querySelectorAll('.dl-item').forEach((item) => item.classList.remove('featured'));
+    match.classList.add('featured');
+    list.prepend(match);
+  } else if (list && !detected) {
+    // Neither Windows nor Android (macOS, Linux, iPhone): nothing is recommended.
+    list.querySelector('.featured')?.classList.remove('featured');
+  }
+</script>
+
+<style>
+  .dl-meta {
+    color: var(--sl-color-gray-2);
+  }
+  .dl-pending {
+    padding: 0.75rem 1rem;
+    border-inline-start: 3px solid var(--sl-color-accent);
+    background: var(--sl-color-gray-6);
+  }
+  .dl-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .dl-item {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+  }
+  .dl-item.featured {
+    border-color: var(--sl-color-accent);
+    background: var(--sl-color-accent-low);
+  }
+  .dl-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+  .dl-head :global(.dl-icon) {
+    color: var(--sl-color-accent);
+  }
+  .dl-text {
+    flex: 1;
+    min-width: 12rem;
+  }
+  .dl-text h3 {
+    margin: 0;
+    font-size: var(--sl-text-lg);
+  }
+  .dl-kind {
+    margin: 0;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .dl-recommended {
+    display: none;
+  }
+  .featured .dl-recommended {
+    display: inline;
+  }
+  .dl-unavailable {
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .dl-req {
+    margin: 0.75rem 0 0;
+    font-size: var(--sl-text-sm);
+  }
+  .dl-links,
+  .dl-sha {
+    margin: 0.5rem 0 0;
+    font-size: var(--sl-text-sm);
+  }
+  .dl-sha code {
+    word-break: break-all;
+  }
+</style>

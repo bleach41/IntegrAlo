@@ -1,0 +1,10 @@
+{
+  "version": "0.1.0",
+  "date": null,
+  "published": false,
+  "assets": {
+    "windows": null,
+    "android": null,
+    "esp32": null
+  }
+}

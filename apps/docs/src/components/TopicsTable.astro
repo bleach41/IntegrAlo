@@ -1,0 +1,36 @@
+---
+/**
+ * MQTT topics table, read from @integralo/contract so it never drifts from the code.
+ * Requires the contract to be compiled (pnpm --filter @integralo/contract build).
+ */
+import { DEFAULT_TOPIC_PREFIX, NODE_TOPIC_KINDS, TOPIC_QOS, TOPIC_RETAINED } from '@integralo/contract';
+
+const direction: Record<string, string> = {
+  announce: 'Nodo → servidor',
+  status: 'Nodo → servidor',
+  telemetry: 'Nodo → servidor',
+  cmd: 'Servidor → nodo',
+  ack: 'Nodo → servidor',
+};
+---
+
+<table>
+  <thead>
+    <tr>
+      <th>Tema</th>
+      <th>Sentido</th>
+      <th>QoS</th>
+      <th>Retenido</th>
+    </tr>
+  </thead>
+  <tbody>
+    {NODE_TOPIC_KINDS.map((kind) => (
+      <tr>
+        <td><code>{`${DEFAULT_TOPIC_PREFIX}/nodes/{nodeId}/${kind}`}</code></td>
+        <td>{direction[kind] ?? '—'}</td>
+        <td>{TOPIC_QOS[kind]}</td>
+        <td>{TOPIC_RETAINED[kind] ? 'Sí' : 'No'}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>

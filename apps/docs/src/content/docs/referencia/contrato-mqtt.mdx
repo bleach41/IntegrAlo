@@ -1,0 +1,31 @@
+---
+title: Contrato MQTT
+description: Temas MQTT entre el servidor y los nodos.
+sidebar:
+  order: 1
+---
+
+import TopicsTable from '../../../components/TopicsTable.astro';
+
+Los nodos y el servidor se comunican por MQTT. Cada nodo usa sus propios temas, con la forma
+`integralo/nodes/{nodeId}/{tipo}`, por ejemplo `integralo/nodes/esp32-a1b2c3/telemetry`.
+
+## Temas
+
+Esta tabla se genera directamente del código del contrato (`packages/contract`), así que siempre
+coincide con lo que usa la plataforma.
+
+<TopicsTable />
+
+- Los mensajes **retenidos** permiten que el servidor conozca la identidad y el estado de cada
+  nodo nada más arrancar.
+- Las **órdenes** (`cmd`) no son retenidas: una orden antigua nunca debe aplicarse al reconectar.
+- Una **lectura** perdida (`telemetry`, QoS 0) se sustituye por la siguiente.
+
+## Identificador del nodo
+
+Letras minúsculas, cifras y guiones, de 3 a 64 caracteres, empezando por letra o cifra.
+
+:::note[Página en preparación]
+Falta el formato de cada mensaje.
+:::

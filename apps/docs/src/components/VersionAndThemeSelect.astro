@@ -1,0 +1,49 @@
+---
+/**
+ * Header: documentation version selector, then Starlight's own theme selector.
+ *
+ * Only the current version exists for now. When an older version has to stay readable
+ * (for example after 0.2.0), replace this component with the starlight-versions plugin,
+ * which archives the pages and fills this same selector.
+ */
+import Default from '@astrojs/starlight/components/ThemeSelect.astro';
+import Select from '@astrojs/starlight/components/Select.astro';
+import { getRelease } from '../lib/release';
+
+const release = await getRelease();
+const changelog = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/cambios/`;
+---
+
+<integralo-version-select data-changelog={changelog}>
+  <Select
+    label="Versión de la documentación"
+    icon="information"
+    width="8em"
+    options={[
+      { label: `v${release.version}`, value: 'current', selected: true },
+      { label: 'Ver cambios', value: 'changelog', selected: false },
+    ]}
+  />
+</integralo-version-select>
+<Default />
+
+<script>
+  class VersionSelect extends HTMLElement {
+    connectedCallback() {
+      const select = this.querySelector('select');
+      select?.addEventListener('change', () => {
+        if (select.value === 'changelog') {
+          select.value = 'current';
+          window.location.href = this.dataset.changelog!;
+        }
+      });
+    }
+  }
+  customElements.define('integralo-version-select', VersionSelect);
+</script>
+
+<style>
+  integralo-version-select {
+    display: contents;
+  }
+</style>
