@@ -16,7 +16,8 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "integralo"
+      "package-name": "integralo",
+      "initial-version": "0.1.0"
     }
   }
 }
