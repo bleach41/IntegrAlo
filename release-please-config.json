@@ -7,7 +7,7 @@
     { "type": "feat", "section": "Novedades" },
     { "type": "fix", "section": "Correcciones" },
     { "type": "perf", "section": "Rendimiento" },
-    { "type": "docs", "section": "Documentación" },
+    { "type": "docs", "section": "Documentación", "hidden": true },
     { "type": "build", "section": "Instalador y compilación", "hidden": true },
     { "type": "test", "section": "Pruebas", "hidden": true },
     { "type": "refactor", "section": "Reorganización interna", "hidden": true },
