@@ -9,7 +9,8 @@
 
 namespace integralo {
 
-MosquittoTransport::MosquittoTransport(std::string host, int port) : host_(std::move(host)), port_(port) {
+MosquittoTransport::MosquittoTransport(std::string host, int port, Logger log)
+    : host_(std::move(host)), port_(port), log_(std::move(log)) {
   mosquitto_lib_init();
 }
 
@@ -30,7 +31,17 @@ void MosquittoTransport::connect(const MqttConnectOptions& o) {
   if (!o.username.empty()) mosquitto_username_pw_set(mosq_, o.username.c_str(), o.password.c_str());
   mosquitto_will_set(mosq_, o.willTopic.c_str(), static_cast<int>(o.willPayload.size()), o.willPayload.data(), o.willQos, o.willRetain);
   // The answer (CONNACK) arrives later, inside loop(); connected() turns true then.
-  mosquitto_connect(mosq_, host_.c_str(), port_, o.keepaliveS);
+  const int rc = mosquitto_connect(mosq_, host_.c_str(), port_, o.keepaliveS);
+  if (rc != MOSQ_ERR_SUCCESS) {
+    report("cannot reach the broker at " + host_ + ":" + std::to_string(port_) + " (is the server running?), retrying");
+  }
+}
+
+void MosquittoTransport::report(const std::string& problem) {
+  // The node retries every 2 s; the same reason is printed only once.
+  if (problem == lastProblem_) return;
+  lastProblem_ = problem;
+  if (log_ && !problem.empty()) log_(problem);
 }
 
 void MosquittoTransport::loop() {
@@ -56,7 +67,19 @@ void MosquittoTransport::disconnect() {
 }
 
 void MosquittoTransport::onConnectCb(mosquitto*, void* self, int rc) {
-  static_cast<MosquittoTransport*>(self)->connected_ = (rc == 0);
+  auto* t = static_cast<MosquittoTransport*>(self);
+  t->connected_ = (rc == 0);
+  if (rc == 0) {
+    t->report("");
+    return;
+  }
+  // MQTT 3.1.1 CONNACK codes. 4 and 5 mean the nodes' MQTT account is wrong.
+  static const char* const reasons[] = {"", "unacceptable protocol version", "client id rejected", "broker unavailable",
+                                        "bad user name or password", "not authorized"};
+  const std::string reason = (rc > 0 && rc <= 5) ? reasons[rc] : "code " + std::to_string(rc);
+  const bool account = rc == 4 || rc == 5;
+  t->report("the broker refused the connection: " + reason +
+            (account ? " (check the nodes' user and password shown in the server panel)" : "") + ", retrying");
 }
 
 void MosquittoTransport::onDisconnectCb(mosquitto*, void* self, int) {

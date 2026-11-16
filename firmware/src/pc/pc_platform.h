@@ -14,7 +14,8 @@ namespace integralo {
 
 class MosquittoTransport : public MqttTransport {
  public:
-  MosquittoTransport(std::string host, int port);
+  /** log, if given, receives the reason when the broker cannot be reached or refuses the node (once per new reason). */
+  MosquittoTransport(std::string host, int port, Logger log = nullptr);
   ~MosquittoTransport() override;
 
   void connect(const MqttConnectOptions& options) override;
@@ -29,9 +30,12 @@ class MosquittoTransport : public MqttTransport {
   static void onConnectCb(mosquitto*, void* self, int rc);
   static void onDisconnectCb(mosquitto*, void* self, int rc);
   static void onMessageCb(mosquitto*, void* self, const mosquitto_message* msg);
+  void report(const std::string& problem);
 
   std::string host_;
   int port_;
+  Logger log_;
+  std::string lastProblem_;
   mosquitto* mosq_ = nullptr;
   bool connected_ = false;
   MessageHandler handler_;

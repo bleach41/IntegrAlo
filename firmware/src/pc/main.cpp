@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
     fflush(stdout);
   };
 
-  MosquittoTransport mqtt(host, port);
+  MosquittoTransport mqtt(host, port, log);
   FileStorage storage(stateDir + "/" + nodeId);
   std::filesystem::create_directories(stateDir + "/" + nodeId);
   TemperatureNode temperature(storage, initial);
