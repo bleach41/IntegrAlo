@@ -30,7 +30,10 @@ export function PendingNodeCard({ node, canApprove }: { node: NodeInfo; canAppro
               placeholderTextColor={colors.muted}
               accessibilityLabel={t('dashboard.nodeName')}
               autoCapitalize="sentences"
-              className="mr-2 h-9 flex-1 rounded-lg border border-line bg-canvas px-3 text-sm text-ink"
+              // Android adds its own vertical padding to a TextInput; inside a 36 px box it leaves
+              // less room than one line of text, which clips the text and makes it scroll.
+              textAlignVertical="center"
+              className="mr-2 h-9 flex-1 rounded-lg border border-line bg-canvas px-3 py-0 text-sm text-ink"
             />
             <SmallButton
               label={t('dashboard.approve')}
