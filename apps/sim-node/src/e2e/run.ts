@@ -77,10 +77,17 @@ class Probe {
   }
 }
 
+/**
+ * The node under test: the simulated TypeScript node by default, or any program that accepts the
+ * same options, such as the PC build of the C++ firmware core (INTEGRALO_E2E_NODE_EXE), so both
+ * implementations pass exactly the same checks.
+ */
 function startNode(stateDir: string): ChildProcess {
-  return spawn(process.execPath, [join(__dirname, '..', 'index.js'), '--node-id', NODE_ID, '--state-dir', stateDir, '--broker', BROKER, '--topic-prefix', PREFIX], {
-    stdio: 'ignore',
-  });
+  const args = ['--node-id', NODE_ID, '--state-dir', stateDir, '--broker', BROKER, '--topic-prefix', PREFIX];
+  const exe = process.env.INTEGRALO_E2E_NODE_EXE;
+  return exe
+    ? spawn(exe, args, { stdio: 'ignore', windowsHide: true })
+    : spawn(process.execPath, [join(__dirname, '..', 'index.js'), ...args], { stdio: 'ignore' });
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

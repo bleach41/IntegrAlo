@@ -86,7 +86,13 @@ async function main(): Promise<void> {
   const workDir = mkdtempSync(join(tmpdir(), 'integralo-core-e2e-'));
   const serverScript = join(__dirname, '..', 'main.js');
   const simScript = join(__dirname, '..', '..', '..', 'sim-node', 'dist', 'index.js');
-  const startSim = () => spawnNode(simScript, ['--node-id', SIM_ID, '--state-dir', workDir, '--broker', BROKER, '--topic-prefix', PREFIX]);
+  const simArgs = ['--node-id', SIM_ID, '--state-dir', workDir, '--broker', BROKER, '--topic-prefix', PREFIX];
+  // INTEGRALO_E2E_NODE_EXE: the temperature node is the PC build of the C++ firmware instead.
+  const nodeExe = process.env.INTEGRALO_E2E_NODE_EXE;
+  const startSim = () =>
+    nodeExe
+      ? spawn(nodeExe, simArgs, { stdio: process.env.E2E_VERBOSE ? 'inherit' : 'ignore', windowsHide: true })
+      : spawnNode(simScript, simArgs);
 
   const probe = await mqtt.connectAsync(BROKER, { clientId: `integralo-core-e2e-${process.pid}` });
   const clearRetained = async () => {
