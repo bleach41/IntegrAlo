@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/bleach41/IntegrAlo/compare/v0.1.0...v0.2.0) (2026-11-17)
+
+
+### Novedades
+
+* **firmware:** ESP32 layer with a configuration portal and esp-mqtt ([df79078](https://github.com/bleach41/IntegrAlo/commit/df79078779b72bf7713781b9dfc7ea91c348e4d1))
+* **firmware:** portable C++ node core with a PC build for software-in-the-loop tests ([c8881a8](https://github.com/bleach41/IntegrAlo/commit/c8881a8f28f977f55ce225c4844c2402bce87e00))
+
+
+### Correcciones
+
+* **client:** keep the node name input from clipping its text on Android ([b14446b](https://github.com/bleach41/IntegrAlo/commit/b14446bae80307b766eb37fef8578c60dbb887ff))
+* **firmware:** say why the PC node cannot connect to the broker ([a4b531c](https://github.com/bleach41/IntegrAlo/commit/a4b531cc1e03e35c4735121f9b0d5cc53ced0e0f))
+
 ## 0.1.0 (2026-11-15)
 
 
