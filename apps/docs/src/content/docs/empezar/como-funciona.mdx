@@ -23,6 +23,19 @@ desde el navegador. Toca cada pieza para ver qué hace, o reproduce los mensajes
    Solo entonces la app la muestra como confirmada. Si no llega respuesta, la orden queda «sin
    confirmar» y nunca se aplica tarde.
 
+## Si se cae la conexión
+
+El botón **¿Y si se cae la conexión?** muestra qué pasa cuando la placa pierde el Wi-Fi:
+
+- El nodo **sigue controlando la habitación**: su lazo de control no depende de la red.
+- Una orden enviada justo después del corte, antes de que nadie lo note, **queda «sin confirmar»**
+  y no se reintenta.
+- El broker publica en nombre del nodo el **«último deseo»** (*Last Will*) que este le dejó al
+  conectarse: `offline`. Desde ese momento la app lo muestra sin conexión y el núcleo no acepta
+  órdenes para él.
+- Al volver, el nodo **se anuncia de nuevo** con una sesión limpia: la orden perdida no le llega
+  nunca, así que no se aplica tarde.
+
 Los mensajes de ejemplo del diagrama se comprueban contra el contrato de la plataforma cada vez
 que se construye esta web, así que tienen siempre la forma exacta que espera el núcleo. La lista
 completa de temas está en la [referencia del contrato MQTT](../../referencia/contrato-mqtt/).

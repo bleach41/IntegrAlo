@@ -1,15 +1,19 @@
 ---
 /**
- * Interactive architecture of IntegrAlo: the node, the broker, the core and the app, and the three
- * messages of the base case (telemetry, command, confirmation) travelling between them.
+ * Interactive architecture of IntegrAlo: the node, the broker, the core and the app, the three
+ * messages of the base case (telemetry, command, confirmation) travelling between them, and what
+ * happens when the node loses its connection.
  *
- * Topics, QoS and message shapes come from @integralo/contract. The example messages are checked
- * against the contract schemas when the site is built: if the contract changes, the build fails
- * here instead of showing a message the platform would reject.
+ * Topics, QoS, timings and message shapes come from @integralo/contract. The example messages are
+ * checked against the contract schemas when the site is built: if the contract changes, the build
+ * fails here instead of showing a message the platform would reject.
  */
 import {
   AckMessageSchema,
+  AnnounceMessageSchema,
   CommandMessageSchema,
+  NodeStatusSchema,
+  PROTOCOL_DEFAULTS,
   TelemetryMessageSchema,
   TOPIC_QOS,
   TOPIC_RETAINED,
@@ -20,6 +24,7 @@ import siteConfig from '../../site.config.mjs';
 
 const NODE = 'esp32-a1b2c3';
 const CMD_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+const LOST_CMD_ID = 'b3d1c0de-5a1e-4f00-9c2b-1d2e3f4a5b6c';
 
 const telemetry = TelemetryMessageSchema.parse({
   seq: 128,
@@ -28,10 +33,18 @@ const telemetry = TelemetryMessageSchema.parse({
 });
 const command = CommandMessageSchema.parse({ cmdId: CMD_ID, type: 'set_setpoint', payload: { setpoint: 22 } });
 const ack = AckMessageSchema.parse({ cmdId: CMD_ID, result: 'accepted', state: { setpoint: 22 } });
+const lostCommand = CommandMessageSchema.parse({ cmdId: LOST_CMD_ID, type: 'set_setpoint', payload: { setpoint: 21 } });
+const offline = NodeStatusSchema.parse('offline');
+const announce = AnnounceMessageSchema.parse({ nodeId: NODE, module: 'temperature', fw: '0.1.0-esp32', uptimeMs: 702000 });
+
+// MQTT: the broker drops a client it has not heard from in 1.5 times its keepalive.
+const willAfterS = PROTOCOL_DEFAULTS.keepaliveSeconds * 1.5;
+const ackTimeoutS = PROTOCOL_DEFAULTS.ackTimeoutMs / 1000;
 
 const mqtt = (kind: NodeTopicKind) => `MQTT · QoS ${TOPIC_QOS[kind]}`;
 const topicLine = (kind: NodeTopicKind) =>
   `${nodeTopic(NODE, kind)} · QoS ${TOPIC_QOS[kind]} · ${TOPIC_RETAINED[kind] ? 'retenido' : 'no retenido'}`;
+const json = (value: unknown) => JSON.stringify(value, null, 2);
 
 const code = (path: string) => (siteConfig.repo ? `${siteConfig.repo}/tree/main/${path}` : null);
 
@@ -43,7 +56,7 @@ const blocks = [
     facts: [
       'Se identifica como esp32- seguido del final de su dirección MAC.',
       'Se configura desde el móvil con su portal Wi-Fi IntegrAlo-xxxxxx.',
-      'Recuerda las órdenes recientes para no aplicar dos veces la misma.',
+      'Su lazo de control sigue funcionando aunque se pierda la red.',
     ],
     path: 'firmware',
   },
@@ -54,7 +67,7 @@ const blocks = [
     facts: [
       'Mosquitto, en el puerto 1883.',
       'Sin acceso anónimo: el núcleo y los nodos tienen su propia cuenta.',
-      'Los nodos solo pueden usar los temas integralo/nodes/…',
+      'Si un nodo deja de responder, publica en su nombre que está desconectado.',
     ],
     path: 'apps/supervisor/src/broker.ts',
   },
@@ -64,8 +77,8 @@ const blocks = [
     text: 'Registra los nodos, guarda la telemetría y la auditoría, envía las órdenes y espera su confirmación.',
     facts: [
       'NestJS con una base de datos SQLite.',
-      'Una orden sin respuesta queda «sin confirmar» y nunca se aplica tarde.',
-      'Avisa a la app al instante por WebSocket.',
+      `Una orden sin respuesta en ${ackTimeoutS} s queda «sin confirmar» y nunca se aplica tarde.`,
+      'No acepta órdenes para un nodo desconectado.',
     ],
     path: 'apps/server/src',
   },
@@ -75,8 +88,8 @@ const blocks = [
     text: 'Muestra el estado de cada nodo, aprueba los nodos nuevos y envía órdenes.',
     facts: [
       'El mismo código para Android y para el navegador.',
-      'Cada módulo se dibuja a partir de su manifiesto.',
-      'La temperatura es el primer módulo.',
+      'Recibe los cambios al instante por WebSocket.',
+      'Cada módulo se dibuja a partir de su manifiesto; la temperatura es el primero.',
     ],
     path: 'apps/client/src',
   },
@@ -93,33 +106,92 @@ const blocks = [
   },
 ].map((b) => ({ ...b, href: code(b.path) }));
 
-const steps = [
+/**
+ * One scenario is one or more parts; each part moves a message along `route` (block indexes).
+ * lost: the last hop never arrives. nodeOff / nodeOn: the node loses or recovers its connection
+ * before the message moves. end: text shown when the part finishes.
+ */
+const telemetryPart = {
+  title: 'Telemetría',
+  tone: 'up',
+  route: [0, 1, 2, 3],
+  hops: [mqtt('telemetry'), mqtt('telemetry'), 'WebSocket'],
+  topic: topicLine('telemetry'),
+  note: 'El nodo la envía periódicamente. Si se pierde una lectura, la siguiente la reemplaza.',
+  body: json(telemetry),
+};
+const commandPart = {
+  title: 'Orden',
+  tone: 'down',
+  route: [3, 2, 1, 0],
+  hops: [`HTTP · POST /api/nodes/${NODE}/commands`, mqtt('cmd'), mqtt('cmd')],
+  topic: topicLine('cmd'),
+  note: 'Una orden no se puede perder, y una orden antigua nunca se aplica al reconectar.',
+  body: json(command),
+};
+const ackPart = {
+  title: 'Confirmación',
+  tone: 'up',
+  route: [0, 1, 2, 3],
+  hops: [mqtt('ack'), mqtt('ack'), 'WebSocket'],
+  topic: topicLine('ack'),
+  note: 'Una por orden, con el estado que quedó aplicado. La app marca la orden como confirmada.',
+  body: json(ack),
+  end: 'La orden quedó confirmada.',
+};
+const scenarios = [
+  { label: '1 · Telemetría', parts: [telemetryPart] },
+  { label: '2 · Orden', parts: [commandPart] },
+  { label: '3 · Confirmación', parts: [ackPart] },
+  { label: 'Ciclo completo', parts: [telemetryPart, commandPart, ackPart] },
   {
-    label: 'Telemetría',
-    tone: 'up',
-    route: [0, 1, 2, 3],
-    hops: [mqtt('telemetry'), mqtt('telemetry'), 'WebSocket'],
-    topic: topicLine('telemetry'),
-    note: 'El nodo la envía periódicamente. Si se pierde una lectura, la siguiente la reemplaza.',
-    body: JSON.stringify(telemetry, null, 2),
-  },
-  {
-    label: 'Orden',
-    tone: 'down',
-    route: [3, 2, 1, 0],
-    hops: [`HTTP · POST /api/nodes/${NODE}/commands`, mqtt('cmd'), mqtt('cmd')],
-    topic: topicLine('cmd'),
-    note: 'Una orden no se puede perder, y una orden antigua nunca se aplica al reconectar.',
-    body: JSON.stringify(command, null, 2),
-  },
-  {
-    label: 'Confirmación',
-    tone: 'up',
-    route: [0, 1, 2, 3],
-    hops: [mqtt('ack'), mqtt('ack'), 'WebSocket'],
-    topic: topicLine('ack'),
-    note: 'Una por orden, con el estado que quedó aplicado. La app marca la orden como confirmada.',
-    body: JSON.stringify(ack, null, 2),
+    label: '¿Y si se cae la conexión?',
+    alert: true,
+    parts: [
+      {
+        title: 'Corte',
+        tone: 'alert',
+        route: [0],
+        hops: [],
+        nodeOff: true,
+        topic: 'La placa pierde el Wi-Fi.',
+        note: 'Su lazo de control sigue funcionando: la habitación sigue regulada aunque no haya red. Las lecturas de este tiempo no se envían después; el salto en «seq» mostrará cuánto duró el corte.',
+        body: '',
+        end: 'Nodo ESP32 sin conexión. El resto todavía no lo sabe.',
+      },
+      {
+        title: 'Orden durante el corte',
+        tone: 'down',
+        route: [3, 2, 1, 0],
+        hops: [`HTTP · POST /api/nodes/${NODE}/commands`, mqtt('cmd'), 'no llega'],
+        lost: true,
+        topic: topicLine('cmd'),
+        note: `El núcleo aún no sabe del corte y publica la orden, pero nadie la confirma. A los ${ackTimeoutS} s la marca «sin confirmar» y no la reintenta.`,
+        body: json(lostCommand),
+        end: `Orden sin confirmar tras ${ackTimeoutS} s.`,
+      },
+      {
+        title: 'Último deseo del nodo',
+        tone: 'alert',
+        route: [1, 2, 3],
+        hops: [mqtt('status'), 'WebSocket'],
+        topic: topicLine('status'),
+        note: `Al conectarse, el nodo dejó al broker un «último deseo» (Last Will). Tras ${willAfterS} s sin oírlo, el broker lo publica en su nombre. La app muestra el nodo sin conexión y el núcleo deja de aceptar órdenes para él.`,
+        body: offline,
+        end: 'Nodo marcado sin conexión.',
+      },
+      {
+        title: 'Vuelve la conexión',
+        tone: 'up',
+        route: [0, 1, 2, 3],
+        hops: [mqtt('announce'), mqtt('announce'), 'WebSocket'],
+        nodeOn: true,
+        topic: topicLine('announce'),
+        note: 'El nodo se anuncia y publica «online». Empieza una sesión limpia: la orden perdida no le llega nunca, así que no se aplica tarde.',
+        body: json(announce),
+        end: 'Nodo de nuevo en línea, sin órdenes viejas pendientes.',
+      },
+    ],
   },
 ];
 
@@ -135,20 +207,25 @@ const face = {
   right: (x: number) => `${x},${Y + H} ${x + W},${Y} ${x + W},${Y + D} ${x},${Y + H + D}`,
   top: (x: number) => `${x},${Y - H} ${x + W},${Y} ${x},${Y + H} ${x - W},${Y}`,
 };
-const data = JSON.stringify({ blocks, steps, X, Y });
+const data = JSON.stringify({ blocks, scenarios, X, Y });
 ---
 
 <div class="arch not-content" data-arch={data}>
   <div class="arch-steps" role="group" aria-label="Mensajes del caso base">
-    {steps.map((s, i) => <button type="button" data-step={i}>{`${i + 1} · ${s.label}`}</button>)}
-    <button type="button" data-step="all">Ciclo completo</button>
+    {
+      scenarios.map((s, i) => (
+        <button type="button" data-scenario={i} class:list={{ 'is-alert': s.alert }}>
+          {s.label}
+        </button>
+      ))
+    }
   </div>
 
   <svg viewBox="0 0 680 150" role="img" aria-labelledby="arch-title">
     <title id="arch-title">Arquitectura de IntegrAlo: nodo ESP32, broker MQTT, núcleo y app</title>
     <rect class="arch-pc" data-block="4" x="170" y="8" width="340" height="138" rx="14"></rect>
     <text class="arch-pc-label" x="186" y="30">PC · servicio IntegrAlo</text>
-    {X.slice(0, 3).map((x, i) => <line class="arch-link" x1={x + W} y1={Y + 20} x2={X[i + 1] - W} y2={Y + 20} />)}
+    {X.slice(0, 3).map((x, i) => <line class="arch-link" data-link={i} x1={x + W} y1={Y + 20} x2={X[i + 1] - W} y2={Y + 20} />)}
     {
       X.map((x, i) => (
         <g class="arch-block" data-block={i} tabindex="0" role="button" aria-label={blocks[i].name}>
@@ -193,6 +270,7 @@ const data = JSON.stringify({ blocks, steps, X, Y });
   .arch {
     --arch-up: var(--sl-color-accent);
     --arch-down: var(--sl-color-orange);
+    --arch-alert: var(--sl-color-red);
     max-width: 46rem;
     margin: 2rem auto;
     color: var(--sl-color-white);
@@ -220,6 +298,11 @@ const data = JSON.stringify({ blocks, steps, X, Y });
     border-color: var(--sl-color-accent);
     color: var(--sl-color-accent-high);
   }
+  .arch-steps button.is-alert:hover,
+  .arch-steps button.is-alert[aria-pressed='true'] {
+    border-color: var(--arch-alert);
+    color: var(--sl-color-red-high);
+  }
   .arch svg {
     display: block;
     width: 100%;
@@ -240,10 +323,16 @@ const data = JSON.stringify({ blocks, steps, X, Y });
   .arch-link {
     stroke: var(--sl-color-gray-4);
     stroke-dasharray: 3 3;
+    transition: stroke 0.25s, opacity 0.25s;
+  }
+  .arch-link.is-broken {
+    stroke: var(--arch-alert);
+    opacity: 0.35;
   }
   .arch-block {
     cursor: pointer;
     outline: none;
+    transition: opacity 0.25s;
   }
   .arch-block polygon {
     stroke: var(--sl-color-gray-4);
@@ -261,14 +350,21 @@ const data = JSON.stringify({ blocks, steps, X, Y });
     fill: var(--sl-color-gray-5);
   }
   .arch-block:hover polygon,
-  .arch-block:focus-visible polygon {
-    stroke: var(--sl-color-accent);
-  }
+  .arch-block:focus-visible polygon,
   .arch-block.is-on polygon {
     stroke: var(--sl-color-accent);
   }
   .arch-block.is-on .arch-top {
     fill: var(--sl-color-accent-low);
+  }
+  .arch-block.is-off {
+    opacity: 0.6;
+  }
+  .arch-block.is-off polygon {
+    stroke: var(--arch-alert);
+  }
+  .arch-block.is-off .arch-top {
+    fill: var(--sl-color-red-low);
   }
   .arch-dot {
     fill: var(--arch-up);
@@ -280,6 +376,9 @@ const data = JSON.stringify({ blocks, steps, X, Y });
   }
   .arch-dot.is-down {
     fill: var(--arch-down);
+  }
+  .arch-dot.is-alert {
+    fill: var(--arch-alert);
   }
   .arch-labels {
     display: grid;
@@ -308,6 +407,9 @@ const data = JSON.stringify({ blocks, steps, X, Y });
   .arch-labels button.is-on strong {
     color: var(--sl-color-accent-high);
   }
+  .arch-labels button.is-off strong {
+    color: var(--sl-color-red-high);
+  }
   .arch-hop {
     min-height: 1.5em;
     margin: 0.75rem 0;
@@ -324,6 +426,9 @@ const data = JSON.stringify({ blocks, steps, X, Y });
   }
   .arch-wire {
     background: var(--sl-color-gray-6);
+  }
+  .arch-wire.is-alert {
+    border-color: var(--arch-alert);
   }
   .arch-wire-title {
     font-size: var(--sl-text-xs);
@@ -385,18 +490,33 @@ const data = JSON.stringify({ blocks, steps, X, Y });
 
 <script>
   type Block = { name: string; text: string; facts: string[]; path: string; href: string | null };
-  type Step = { label: string; tone: 'up' | 'down'; route: number[]; hops: string[]; topic: string; note: string; body: string };
-  type Data = { blocks: Block[]; steps: Step[]; X: number[]; Y: number };
+  type Part = {
+    title: string;
+    tone: 'up' | 'down' | 'alert';
+    route: number[];
+    hops: string[];
+    topic: string;
+    note: string;
+    body: string;
+    lost?: boolean;
+    nodeOff?: boolean;
+    nodeOn?: boolean;
+    end?: string;
+  };
+  type Scenario = { label: string; alert?: boolean; parts: Part[] };
+  type Data = { blocks: Block[]; scenarios: Scenario[]; X: number[]; Y: number };
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-arch]')) {
-    const { blocks, steps, X, Y } = JSON.parse(root.dataset.arch!) as Data;
+    const { blocks, scenarios, X, Y } = JSON.parse(root.dataset.arch!) as Data;
     const q = <T extends Element>(s: string) => root.querySelector<T>(s)!;
     const dot = q<SVGCircleElement>('.arch-dot');
     const hop = q<HTMLElement>('.arch-hop');
-    const stepButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-step]')];
+    const wire = q<HTMLElement>('.arch-wire');
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-scenario]')];
     let busy = false;
 
     const select = (i: number) => {
@@ -412,64 +532,85 @@ const data = JSON.stringify({ blocks, steps, X, Y });
         link.href = b.href;
         link.textContent = `Ver el código: ${b.path}`;
       }
-      for (const el of root.querySelectorAll<Element>('.arch-block, .arch-labels button')) {
-        el.classList.toggle('is-on', Number((el as HTMLElement).dataset.block) === i);
+      for (const el of root.querySelectorAll<HTMLElement>('.arch-block, .arch-labels button')) {
+        el.classList.toggle('is-on', Number(el.dataset.block) === i);
       }
     };
 
-    const move = (a: number, b: number) =>
+    /** The node and its link to the broker, drawn as disconnected or connected. */
+    const setNodeOnline = (online: boolean) => {
+      for (const el of root.querySelectorAll<HTMLElement>('[data-block="0"]')) el.classList.toggle('is-off', !online);
+      q('[data-link="0"]').classList.toggle('is-broken', !online);
+    };
+
+    /** Moves the dot from block a towards block b; `share` < 1 stops it part of the way. */
+    const move = (a: number, b: number, share = 1) =>
       new Promise<void>((done) => {
+        const to = X[a] + (X[b] - X[a]) * share;
         if (reducedMotion.matches) {
-          dot.setAttribute('cx', String(X[b]));
+          dot.setAttribute('cx', String(to));
           dot.setAttribute('cy', String(Y));
           setTimeout(done, 600);
           return;
         }
         const t0 = performance.now();
         const frame = (now: number) => {
-          const t = Math.min(1, (now - t0) / 850);
+          const t = Math.min(1, (now - t0) / (850 * share));
           const e = ease(t);
-          dot.setAttribute('cx', String(X[a] + (X[b] - X[a]) * e));
-          dot.setAttribute('cy', String(Y - Math.sin(Math.PI * e) * 20));
+          dot.setAttribute('cx', String(X[a] + (to - X[a]) * e));
+          dot.setAttribute('cy', String(Y - Math.sin(Math.PI * e * share) * 20));
           if (t < 1) requestAnimationFrame(frame);
           else done();
         };
         requestAnimationFrame(frame);
       });
 
-    const run = async (k: number) => {
-      const s = steps[k];
-      stepButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.step === String(k))));
-      q('.arch-wire-title').textContent = `Mensaje en el cable · ${s.label}`;
-      q('.arch-wire-topic').textContent = s.topic;
-      q('.arch-wire-body').textContent = s.body;
-      q('.arch-wire-note').textContent = s.note;
-      dot.classList.toggle('is-down', s.tone === 'down');
-      select(s.route[0]);
-      for (let i = 0; i < s.hops.length; i++) {
-        hop.textContent = `${blocks[s.route[i]].name} → ${blocks[s.route[i + 1]].name} · ${s.hops[i]}`;
-        await move(s.route[i], s.route[i + 1]);
-        select(s.route[i + 1]);
+    const runPart = async (p: Part) => {
+      q('.arch-wire-title').textContent = `Mensaje en el cable · ${p.title}`;
+      q('.arch-wire-topic').textContent = p.topic;
+      q('.arch-wire-body').textContent = p.body;
+      q('.arch-wire-note').textContent = p.note;
+      wire.classList.toggle('is-alert', p.tone === 'alert' || !!p.lost);
+      dot.classList.toggle('is-down', p.tone === 'down');
+      dot.classList.toggle('is-alert', p.tone === 'alert');
+      if (p.nodeOff) setNodeOnline(false);
+      if (p.nodeOn) setNodeOnline(true);
+      select(p.route[0]);
+      dot.setAttribute('cx', String(X[p.route[0]]));
+      dot.setAttribute('cy', String(Y));
+      dot.classList.toggle('is-moving', p.hops.length > 0);
+      for (let i = 0; i < p.hops.length; i++) {
+        const from = p.route[i];
+        const to = p.route[i + 1];
+        const lastLost = p.lost && i === p.hops.length - 1;
+        hop.textContent = `${blocks[from].name} → ${blocks[to].name} · ${p.hops[i]}`;
+        await move(from, to, lastLost ? 0.45 : 1);
+        if (lastLost) {
+          dot.classList.add('is-alert');
+          await wait(500);
+        } else {
+          select(to);
+        }
       }
+      if (p.end) hop.textContent = p.end;
+      dot.classList.remove('is-moving');
     };
 
-    const play = async (which: string) => {
+    const play = async (k: number) => {
       if (busy) return;
       busy = true;
-      dot.setAttribute('cx', String(X[0]));
-      dot.setAttribute('cy', String(Y));
-      dot.classList.add('is-moving');
-      if (which === 'all') {
-        for (let k = 0; k < steps.length; k++) await run(k);
-        hop.textContent = 'Ciclo completo: la orden quedó confirmada.';
-      } else {
-        await run(Number(which));
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.scenario) === k)));
+      const { parts } = scenarios[k];
+      for (let i = 0; i < parts.length; i++) {
+        await runPart(parts[i]);
+        // Several parts in a row: leave time to read each message before the next one.
+        if (i < parts.length - 1) await wait(parts.length > 3 ? 2600 : 900);
       }
-      dot.classList.remove('is-moving');
+      setNodeOnline(true);
       busy = false;
     };
 
-    stepButtons.forEach((b) => b.addEventListener('click', () => play(b.dataset.step!)));
+    buttons.forEach((b) => b.addEventListener('click', () => play(Number(b.dataset.scenario))));
     for (const el of root.querySelectorAll<HTMLElement | SVGElement>('[data-block]')) {
       const i = Number(el.dataset.block);
       el.addEventListener('click', () => select(i));
@@ -482,14 +623,18 @@ const data = JSON.stringify({ blocks, steps, X, Y });
       });
     }
 
-    // Play the whole cycle once the first time the diagram comes into view.
-    if (!reducedMotion.matches && 'IntersectionObserver' in window) {
-      const seen = new IntersectionObserver((entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          seen.disconnect();
-          play('all');
-        }
-      }, { threshold: 0.6 });
+    // Play the whole base cycle once the first time the diagram comes into view.
+    const cycle = scenarios.findIndex((s) => s.parts.length === 3);
+    if (!reducedMotion.matches && 'IntersectionObserver' in window && cycle >= 0) {
+      const seen = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            seen.disconnect();
+            play(cycle);
+          }
+        },
+        { threshold: 0.6 },
+      );
       seen.observe(root);
     }
   }
