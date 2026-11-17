@@ -1,0 +1,360 @@
+---
+/**
+ * Anatomy of an IntegrAlo node: an ESP32 DevKit board in isometric view. Each part explains what
+ * the IntegrAlo firmware does with it; the LED shows its three states and the BOOT button can be
+ * held for 5 s, as on the real board.
+ *
+ * The behaviour comes from firmware/src/esp32 (esp32_main.cpp and provisioning.cpp). The layout is
+ * the usual one of an ESP32 DevKit. Until it is checked on a real board, `verified` stays false and
+ * the card says so.
+ */
+interface Props {
+  verified?: boolean;
+}
+const { verified = false } = Astro.props;
+
+const LED_PORTAL_MS = 1000; // esp32_main.cpp, updateLed()
+const LED_CONNECTING_MS = 150;
+const BOOT_HOLD_MS = 5000; // esp32_main.cpp, BOOT_HOLD_MS
+
+const parts = [
+  {
+    id: 'usb',
+    name: 'Conector USB',
+    text: 'Alimenta la placa y sirve para grabar el firmware desde el PC. Por el mismo cable, el Monitor Serie a 115200 baudios muestra el registro del nodo.',
+    box: [-6, 38, 16, 72, 9],
+  },
+  {
+    id: 'en',
+    name: 'Botón EN (reinicio)',
+    text: 'Reinicia la placa. La configuración de red y el estado de control (consigna, modo y ganancias) están en su memoria no volátil, así que vuelve a arrancar como estaba.',
+    box: [26, 8, 42, 24, 5],
+  },
+  {
+    id: 'boot',
+    name: 'Botón BOOT',
+    text: 'Mantenido 5 s con la placa en marcha, olvida la red y el servidor y abre otra vez el portal. Conserva la consigna, el modo y las ganancias. Al encender no se pulsa: así el ESP32 entra en modo de grabación.',
+    box: [26, 76, 42, 92, 5],
+  },
+  {
+    id: 'led',
+    name: 'LED de estado',
+    text: 'Parpadeo lento (1 s): portal abierto, esperando que lo configures desde el móvil. Parpadeo rápido: buscando la red Wi-Fi o el servidor. Encendido fijo: conectado.',
+    box: [62, 14, 72, 24, 3],
+  },
+  {
+    id: 'module',
+    name: 'Módulo ESP32',
+    text: 'El procesador y su memoria. Ejecuta el mismo núcleo C++ que se prueba en el PC: el lazo de control, las órdenes con confirmación y la temperatura simulada. Su memoria no volátil guarda la configuración y el estado de control.',
+    box: [140, 16, 226, 84, 7],
+  },
+  {
+    id: 'antenna',
+    name: 'Antena Wi-Fi',
+    text: 'Conecta la placa a tu red Wi-Fi. Mientras el portal está abierto, crea además su propia red IntegrAlo-xxxxxx para que el móvil se conecte y la configure.',
+    box: [226, 16, 256, 84, 2],
+  },
+];
+
+// Isometric projection: board coordinates (x along the board, y across it, z up) to the SVG.
+const S = 1.45;
+const OX = 200;
+const OY = 36;
+const T = 8; // board thickness
+const p = (x: number, y: number, z: number) =>
+  `${(OX + (x - y) * 0.866 * S).toFixed(1)},${(OY + (x + y) * 0.5 * S - z * S).toFixed(1)}`;
+const pts = (list: number[][]) => list.map(([x, y, z]) => p(x, y, z)).join(' ');
+/** The three visible faces of a box standing on z0. */
+const faces = (x0: number, y0: number, x1: number, y1: number, z0: number, h: number) => {
+  const t = z0 + h;
+  return {
+    front: pts([[x0, y1, z0], [x1, y1, z0], [x1, y1, t], [x0, y1, t]]),
+    side: pts([[x1, y0, z0], [x1, y1, z0], [x1, y1, t], [x1, y0, t]]),
+    top: pts([[x0, y0, t], [x1, y0, t], [x1, y1, t], [x0, y1, t]]),
+  };
+};
+const board = faces(0, 0, 260, 100, 0, T);
+const drawn = parts.map((part) => {
+  const [x0, y0, x1, y1, h] = part.box;
+  return { ...part, faces: faces(x0, y0, x1, y1, T, h) };
+});
+const pins = Array.from({ length: 19 }, (_, i) => 40 + i * 10).flatMap((x) => [p(x, 4, T), p(x, 96, T)]);
+const antennaTrace = pts([[230, 24], [230, 76], [236, 76], [236, 24], [242, 24], [242, 76], [248, 76], [248, 24]].map(([x, y]) => [x, y, T + 2.2]));
+const [ledX, ledY] = p(67, 19, T + 3.6).split(',');
+
+const data = JSON.stringify({
+  parts: parts.map(({ id, name, text }) => ({ id, name, text })),
+  ledPortalMs: LED_PORTAL_MS,
+  ledConnectingMs: LED_CONNECTING_MS,
+  bootHoldMs: BOOT_HOLD_MS,
+});
+---
+
+<div class="anat not-content" data-anatomy={data}>
+  <svg viewBox="60 0 480 305" role="img" aria-labelledby="anat-title">
+    <title id="anat-title">Placa ESP32 de un nodo IntegrAlo, en perspectiva</title>
+    <polygon class="anat-board-front" points={board.front}></polygon>
+    <polygon class="anat-board-side" points={board.side}></polygon>
+    <polygon class="anat-board-top" points={board.top}></polygon>
+    {pins.map((pin) => <circle class="anat-pin" cx={pin.split(',')[0]} cy={pin.split(',')[1]} r="2"></circle>)}
+    {
+      drawn.map((part) => (
+        <g class="anat-part" data-part={part.id} tabindex="0" role="button" aria-label={part.name}>
+          <polygon class="anat-front" points={part.faces.front} />
+          <polygon class="anat-side" points={part.faces.side} />
+          <polygon class="anat-top" points={part.faces.top} />
+          {part.id === 'antenna' && <polyline class="anat-trace" points={antennaTrace} />}
+        </g>
+      ))
+    }
+    <circle class="anat-led" cx={ledX} cy={ledY} r="5"></circle>
+  </svg>
+
+  <div class="anat-controls">
+    <span>LED:</span>
+    <button type="button" data-led="portal">Portal abierto</button>
+    <button type="button" data-led="connecting">Buscando red o servidor</button>
+    <button type="button" data-led="connected">Conectado</button>
+    <button type="button" class="anat-hold">Mantener BOOT 5 s</button>
+  </div>
+  <div class="anat-bar" aria-hidden="true"><div></div></div>
+
+  <div class="anat-card" aria-live="polite">
+    <div class="anat-card-title">Toca una pieza de la placa</div>
+    <p class="anat-card-text">Cada pieza explica qué hace con ella el firmware de IntegrAlo.</p>
+    {
+      !verified && (
+        <p class="anat-card-note">Descrito a partir del firmware. Pendiente de comprobar con la placa real.</p>
+      )
+    }
+  </div>
+</div>
+
+<style>
+  .anat {
+    max-width: 46rem;
+    margin: 2rem auto;
+    color: var(--sl-color-white);
+  }
+  .anat svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .anat polygon {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+  .anat-board-top {
+    fill: var(--sl-color-gray-6);
+  }
+  .anat-board-side {
+    fill: var(--sl-color-gray-5);
+  }
+  .anat-board-front {
+    fill: var(--sl-color-gray-5);
+  }
+  .anat-pin {
+    fill: var(--sl-color-gray-3);
+  }
+  .anat-part {
+    cursor: pointer;
+    outline: none;
+  }
+  .anat-top {
+    fill: var(--sl-color-black);
+  }
+  .anat-side,
+  .anat-front {
+    fill: var(--sl-color-gray-6);
+  }
+  .anat-part:hover polygon,
+  .anat-part:focus-visible polygon,
+  .anat-part.is-on polygon {
+    stroke: var(--sl-color-accent);
+  }
+  .anat-part.is-on .anat-top {
+    fill: var(--sl-color-accent-low);
+  }
+  .anat-trace {
+    fill: none;
+    stroke: var(--sl-color-gray-3);
+    stroke-width: 1.2;
+    pointer-events: none;
+  }
+  .anat-led {
+    fill: var(--sl-color-blue);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .anat-led.is-lit {
+    opacity: 1;
+  }
+  .anat-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    font-size: var(--sl-text-sm);
+  }
+  .anat-controls span {
+    color: var(--sl-color-gray-3);
+  }
+  .anat-controls button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .anat-controls button:hover,
+  .anat-controls button[aria-pressed='true'] {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent-high);
+  }
+  .anat-hold {
+    margin-inline-start: auto;
+  }
+  .anat-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--sl-color-gray-6);
+    overflow: hidden;
+  }
+  .anat-bar div {
+    height: 100%;
+    width: 0;
+    background: var(--sl-color-accent);
+  }
+  .anat-card {
+    margin-top: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+  }
+  .anat-card-title {
+    font-weight: 600;
+  }
+  .anat-card-text {
+    margin: 0.25rem 0 0;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .anat-card-note {
+    margin: 0.5rem 0 0;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-orange-high);
+  }
+</style>
+
+<script>
+  type Data = {
+    parts: { id: string; name: string; text: string }[];
+    ledPortalMs: number;
+    ledConnectingMs: number;
+    bootHoldMs: number;
+  };
+  type LedMode = 'portal' | 'connecting' | 'connected';
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-anatomy]')) {
+    const { parts, ledPortalMs, ledConnectingMs, bootHoldMs } = JSON.parse(root.dataset.anatomy!) as Data;
+    const q = <T extends Element>(s: string) => root.querySelector<T>(s)!;
+    const led = q<SVGCircleElement>('.anat-led');
+    const hold = q<HTMLButtonElement>('.anat-hold');
+    const bar = q<HTMLElement>('.anat-bar div');
+    const ledButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-led]')];
+
+    const select = (id: string, text?: string) => {
+      const part = parts.find((p) => p.id === id)!;
+      q('.anat-card-title').textContent = part.name;
+      q('.anat-card-text').textContent = text ?? part.text;
+      for (const el of root.querySelectorAll<SVGElement>('[data-part]')) {
+        el.classList.toggle('is-on', el.dataset.part === id);
+      }
+    };
+
+    let blink: number | undefined;
+    const setLed = (mode: LedMode, describe = true) => {
+      clearInterval(blink);
+      ledButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.led === mode)));
+      if (describe) select('led');
+      if (mode === 'connected') {
+        led.classList.add('is-lit');
+        return;
+      }
+      let lit = true;
+      led.classList.add('is-lit');
+      blink = window.setInterval(() => {
+        lit = !lit;
+        led.classList.toggle('is-lit', lit);
+      }, mode === 'portal' ? ledPortalMs : ledConnectingMs);
+    };
+
+    for (const el of root.querySelectorAll<SVGElement>('[data-part]')) {
+      el.addEventListener('click', () => select(el.dataset.part!));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          select(el.dataset.part!);
+        }
+      });
+    }
+    ledButtons.forEach((b) => b.addEventListener('click', () => setLed(b.dataset.led as LedMode)));
+
+    // BOOT: it only counts while it is held, as on the board.
+    let holdStart = 0;
+    let timer: number | undefined;
+    const tick = () => {
+      const share = Math.min(1, (performance.now() - holdStart) / bootHoldMs);
+      bar.style.width = `${share * 100}%`;
+      if (share < 1) return;
+      clearInterval(timer);
+      holdStart = 0;
+      setLed('portal', false);
+      select('boot', 'Red y servidor olvidados. La placa se reinicia y abre el portal IntegrAlo-xxxxxx: el LED parpadea lento.');
+      setTimeout(() => (bar.style.width = '0'), 800);
+    };
+    const press = () => {
+      if (holdStart) return;
+      holdStart = performance.now();
+      select('boot', 'Pulsado… hay que mantenerlo 5 s.');
+      timer = window.setInterval(tick, 50);
+    };
+    const release = () => {
+      if (!holdStart) return;
+      clearInterval(timer);
+      holdStart = 0;
+      bar.style.width = '0';
+      select('boot', 'Soltado antes de 5 s: no pasa nada, la placa sigue conectada.');
+    };
+    hold.addEventListener('pointerdown', (e) => {
+      try {
+        hold.setPointerCapture(e.pointerId); // keeps the press while the finger slides off
+      } catch {
+        // not available for this pointer: the press still counts until it is released
+      }
+      press();
+    });
+    hold.addEventListener('pointerup', release);
+    hold.addEventListener('pointercancel', release);
+    hold.addEventListener('contextmenu', (e) => e.preventDefault());
+    hold.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+        e.preventDefault();
+        press();
+      }
+    });
+    hold.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') release();
+    });
+
+    setLed('connected', false);
+  }
+</script>

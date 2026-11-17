@@ -1,0 +1,58 @@
+---
+title: Cargar el firmware en el ESP32
+description: La placa de un nodo IntegrAlo, cómo grabarle el firmware y cómo ponerla en marcha desde el móvil.
+sidebar:
+  order: 1
+---
+
+import NodeAnatomy from '../../../components/NodeAnatomy.astro';
+
+:::caution[Aún sin probar en una placa]
+El firmware del ESP32 ya está en el repositorio y compila, pero todavía no se ha probado en una
+placa real. Esta página describe lo que hace según su código y se revisará con la primera placa.
+Mientras tanto, el nodo simulado (`pnpm sim-node`) se comporta como un ESP32 y permite probar la
+plataforma sin placa.
+:::
+
+## Anatomía del nodo
+
+Toca cada pieza de la placa para ver qué hace con ella el firmware de IntegrAlo. Los botones
+muestran los tres estados del LED, y el de BOOT hay que mantenerlo pulsado, como en la placa.
+
+<NodeAnatomy />
+
+## Grabar el firmware
+
+Hace falta una placa ESP32 DevKit («ESP32 Dev Module»), un cable USB de datos y, en el PC,
+`arduino-cli` con el núcleo Arduino-ESP32 3.x. Desde la carpeta del repositorio:
+
+```powershell
+.\firmware\scripts\build-esp32.ps1 -Port COM5
+```
+
+`COM5` es un ejemplo: el puerto de la placa aparece en el Administrador de dispositivos de
+Windows al conectarla. Sin `-Port`, el script solo compila. El firmware se graba una sola vez:
+la red y el servidor se configuran después, desde el móvil.
+
+## Ponerlo en marcha
+
+1. **La placa abre su propia red.** Sin configuración, crea la red Wi-Fi abierta
+   `IntegrAlo-xxxxxx` y el LED parpadea lento.
+2. **Conecta el móvil a esa red.** Se abre sola una página de configuración. Si no aparece, abre
+   cualquier dirección en el navegador.
+3. **Rellena la página.** Elige tu red Wi-Fi de la lista y escribe su contraseña. Después indica
+   la dirección del servidor, el puerto y la cuenta de los nodos, que aparecen en el «Panel del
+   servidor IntegrAlo» del PC.
+4. **Vuelve a tu Wi-Fi y abre la app.** La placa se reinicia, se conecta y aparece en
+   «Pendientes de aprobación». El LED queda encendido fijo.
+
+Si la primera conexión falla (contraseña del Wi-Fi incorrecta, cuenta rechazada o servidor no
+encontrado), la placa vuelve a abrir su red y la página muestra el motivo. Una vez que se ha
+conectado bien, los fallos solo se reintentan: tras un corte de corriente, un router que tarda en
+arrancar nunca la devuelve a la página de configuración.
+
+## Cambiar la red o el servidor
+
+Mantén pulsado **BOOT 5 segundos** con la placa en marcha. La placa olvida la red y el servidor,
+conserva la consigna, el modo y las ganancias, y vuelve a abrir su red de configuración. No
+mantengas BOOT pulsado al encenderla: así el ESP32 entra en modo de grabación.
