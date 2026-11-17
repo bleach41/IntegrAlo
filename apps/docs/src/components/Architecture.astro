@@ -1,0 +1,496 @@
+---
+/**
+ * Interactive architecture of IntegrAlo: the node, the broker, the core and the app, and the three
+ * messages of the base case (telemetry, command, confirmation) travelling between them.
+ *
+ * Topics, QoS and message shapes come from @integralo/contract. The example messages are checked
+ * against the contract schemas when the site is built: if the contract changes, the build fails
+ * here instead of showing a message the platform would reject.
+ */
+import {
+  AckMessageSchema,
+  CommandMessageSchema,
+  TelemetryMessageSchema,
+  TOPIC_QOS,
+  TOPIC_RETAINED,
+  nodeTopic,
+  type NodeTopicKind,
+} from '@integralo/contract';
+import siteConfig from '../../site.config.mjs';
+
+const NODE = 'esp32-a1b2c3';
+const CMD_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+
+const telemetry = TelemetryMessageSchema.parse({
+  seq: 128,
+  uptimeMs: 640000,
+  values: { temperature: 24.6, setpoint: 24, mode: 'auto' },
+});
+const command = CommandMessageSchema.parse({ cmdId: CMD_ID, type: 'set_setpoint', payload: { setpoint: 22 } });
+const ack = AckMessageSchema.parse({ cmdId: CMD_ID, result: 'accepted', state: { setpoint: 22 } });
+
+const mqtt = (kind: NodeTopicKind) => `MQTT · QoS ${TOPIC_QOS[kind]}`;
+const topicLine = (kind: NodeTopicKind) =>
+  `${nodeTopic(NODE, kind)} · QoS ${TOPIC_QOS[kind]} · ${TOPIC_RETAINED[kind] ? 'retenido' : 'no retenido'}`;
+
+const code = (path: string) => (siteConfig.repo ? `${siteConfig.repo}/tree/main/${path}` : null);
+
+const blocks = [
+  {
+    name: 'Nodo ESP32',
+    sub: 'Placa en la habitación',
+    text: 'Mide la temperatura (simulada en la placa), aplica las órdenes y confirma cada una.',
+    facts: [
+      'Se identifica como esp32- seguido del final de su dirección MAC.',
+      'Se configura desde el móvil con su portal Wi-Fi IntegrAlo-xxxxxx.',
+      'Recuerda las órdenes recientes para no aplicar dos veces la misma.',
+    ],
+    path: 'firmware',
+  },
+  {
+    name: 'Broker MQTT',
+    sub: 'Reparte los mensajes',
+    text: 'Entrega cada mensaje a quien lo espera. No decide nada: solo reparte.',
+    facts: [
+      'Mosquitto, en el puerto 1883.',
+      'Sin acceso anónimo: el núcleo y los nodos tienen su propia cuenta.',
+      'Los nodos solo pueden usar los temas integralo/nodes/…',
+    ],
+    path: 'apps/supervisor/src/broker.ts',
+  },
+  {
+    name: 'Núcleo',
+    sub: 'Registra y ordena',
+    text: 'Registra los nodos, guarda la telemetría y la auditoría, envía las órdenes y espera su confirmación.',
+    facts: [
+      'NestJS con una base de datos SQLite.',
+      'Una orden sin respuesta queda «sin confirmar» y nunca se aplica tarde.',
+      'Avisa a la app al instante por WebSocket.',
+    ],
+    path: 'apps/server/src',
+  },
+  {
+    name: 'App IntegrAlo',
+    sub: 'Móvil y web',
+    text: 'Muestra el estado de cada nodo, aprueba los nodos nuevos y envía órdenes.',
+    facts: [
+      'El mismo código para Android y para el navegador.',
+      'Cada módulo se dibuja a partir de su manifiesto.',
+      'La temperatura es el primer módulo.',
+    ],
+    path: 'apps/client/src',
+  },
+  {
+    name: 'Servicio IntegrAlo',
+    sub: '',
+    text: 'Un servicio de Windows que arranca el broker y el núcleo, los reinicia si fallan y los detiene en orden.',
+    facts: [
+      'Arranca solo al encender el PC.',
+      'Genera las cuentas y los permisos del broker.',
+      'Su panel muestra la dirección y la cuenta de los nodos.',
+    ],
+    path: 'apps/supervisor/src',
+  },
+].map((b) => ({ ...b, href: code(b.path) }));
+
+const steps = [
+  {
+    label: 'Telemetría',
+    tone: 'up',
+    route: [0, 1, 2, 3],
+    hops: [mqtt('telemetry'), mqtt('telemetry'), 'WebSocket'],
+    topic: topicLine('telemetry'),
+    note: 'El nodo la envía periódicamente. Si se pierde una lectura, la siguiente la reemplaza.',
+    body: JSON.stringify(telemetry, null, 2),
+  },
+  {
+    label: 'Orden',
+    tone: 'down',
+    route: [3, 2, 1, 0],
+    hops: [`HTTP · POST /api/nodes/${NODE}/commands`, mqtt('cmd'), mqtt('cmd')],
+    topic: topicLine('cmd'),
+    note: 'Una orden no se puede perder, y una orden antigua nunca se aplica al reconectar.',
+    body: JSON.stringify(command, null, 2),
+  },
+  {
+    label: 'Confirmación',
+    tone: 'up',
+    route: [0, 1, 2, 3],
+    hops: [mqtt('ack'), mqtt('ack'), 'WebSocket'],
+    topic: topicLine('ack'),
+    note: 'Una por orden, con el estado que quedó aplicado. La app marca la orden como confirmada.',
+    body: JSON.stringify(ack, null, 2),
+  },
+];
+
+// Geometry (SVG user units). The four block centres are evenly spaced so the HTML labels below
+// line up with them in a four-column grid at any width.
+const X = [85, 255, 425, 595];
+const Y = 70;
+const W = 52;
+const H = 22;
+const D = 38;
+const face = {
+  left: (x: number) => `${x - W},${Y} ${x},${Y + H} ${x},${Y + H + D} ${x - W},${Y + D}`,
+  right: (x: number) => `${x},${Y + H} ${x + W},${Y} ${x + W},${Y + D} ${x},${Y + H + D}`,
+  top: (x: number) => `${x},${Y - H} ${x + W},${Y} ${x},${Y + H} ${x - W},${Y}`,
+};
+const data = JSON.stringify({ blocks, steps, X, Y });
+---
+
+<div class="arch not-content" data-arch={data}>
+  <div class="arch-steps" role="group" aria-label="Mensajes del caso base">
+    {steps.map((s, i) => <button type="button" data-step={i}>{`${i + 1} · ${s.label}`}</button>)}
+    <button type="button" data-step="all">Ciclo completo</button>
+  </div>
+
+  <svg viewBox="0 0 680 150" role="img" aria-labelledby="arch-title">
+    <title id="arch-title">Arquitectura de IntegrAlo: nodo ESP32, broker MQTT, núcleo y app</title>
+    <rect class="arch-pc" data-block="4" x="170" y="8" width="340" height="138" rx="14"></rect>
+    <text class="arch-pc-label" x="186" y="30">PC · servicio IntegrAlo</text>
+    {X.slice(0, 3).map((x, i) => <line class="arch-link" x1={x + W} y1={Y + 20} x2={X[i + 1] - W} y2={Y + 20} />)}
+    {
+      X.map((x, i) => (
+        <g class="arch-block" data-block={i} tabindex="0" role="button" aria-label={blocks[i].name}>
+          <polygon class="arch-left" points={face.left(x)} />
+          <polygon class="arch-right" points={face.right(x)} />
+          <polygon class="arch-top" points={face.top(x)} />
+        </g>
+      ))
+    }
+    <circle class="arch-dot" r="9" cx={X[0]} cy={Y}></circle>
+  </svg>
+
+  <div class="arch-labels">
+    {
+      blocks.slice(0, 4).map((b, i) => (
+        <button type="button" data-block={i}>
+          <strong>{b.name}</strong>
+          <span>{b.sub}</span>
+        </button>
+      ))
+    }
+  </div>
+
+  <p class="arch-hop" aria-live="polite">Elige un mensaje para verlo viajar, o toca una pieza.</p>
+
+  <div class="arch-wire">
+    <div class="arch-wire-title">Mensaje en el cable</div>
+    <div class="arch-wire-topic">Elige un mensaje del caso base.</div>
+    <pre class="arch-wire-body"></pre>
+    <div class="arch-wire-note"></div>
+  </div>
+
+  <div class="arch-card" aria-live="polite">
+    <div class="arch-card-title">Toca una pieza</div>
+    <p class="arch-card-text">Cada pieza explica qué hace y dónde está su código.</p>
+    <ul class="arch-card-facts"></ul>
+    <a class="arch-card-code" hidden></a>
+  </div>
+</div>
+
+<style>
+  .arch {
+    --arch-up: var(--sl-color-accent);
+    --arch-down: var(--sl-color-orange);
+    max-width: 46rem;
+    margin: 2rem auto;
+    color: var(--sl-color-white);
+  }
+  .arch button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+  .arch-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .arch-steps button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 999px;
+    background: transparent;
+    font-size: var(--sl-text-sm);
+  }
+  .arch-steps button:hover,
+  .arch-steps button[aria-pressed='true'] {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent-high);
+  }
+  .arch svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .arch-pc {
+    fill: none;
+    stroke: var(--sl-color-gray-4);
+    stroke-dasharray: 4 4;
+    cursor: pointer;
+  }
+  .arch-pc-label {
+    fill: var(--sl-color-gray-3);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .arch-link {
+    stroke: var(--sl-color-gray-4);
+    stroke-dasharray: 3 3;
+  }
+  .arch-block {
+    cursor: pointer;
+    outline: none;
+  }
+  .arch-block polygon {
+    stroke: var(--sl-color-gray-4);
+    stroke-width: 1;
+    stroke-linejoin: round;
+    transition: fill 0.25s, stroke 0.25s;
+  }
+  .arch-top {
+    fill: var(--sl-color-black);
+  }
+  .arch-left {
+    fill: var(--sl-color-gray-6);
+  }
+  .arch-right {
+    fill: var(--sl-color-gray-5);
+  }
+  .arch-block:hover polygon,
+  .arch-block:focus-visible polygon {
+    stroke: var(--sl-color-accent);
+  }
+  .arch-block.is-on polygon {
+    stroke: var(--sl-color-accent);
+  }
+  .arch-block.is-on .arch-top {
+    fill: var(--sl-color-accent-low);
+  }
+  .arch-dot {
+    fill: var(--arch-up);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .arch-dot.is-moving {
+    opacity: 1;
+  }
+  .arch-dot.is-down {
+    fill: var(--arch-down);
+  }
+  .arch-labels {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+  .arch-labels button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.25rem;
+    border: 0;
+    background: none;
+    text-align: center;
+  }
+  .arch-labels strong {
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+  }
+  .arch-labels span {
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  .arch-labels button.is-on strong {
+    color: var(--sl-color-accent-high);
+  }
+  .arch-hop {
+    min-height: 1.5em;
+    margin: 0.75rem 0;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+    text-align: center;
+  }
+  .arch-wire,
+  .arch-card {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.75rem;
+  }
+  .arch-wire {
+    background: var(--sl-color-gray-6);
+  }
+  .arch-wire-title {
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  .arch-wire-topic {
+    margin-top: 0.2rem;
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    overflow-wrap: anywhere;
+  }
+  .arch-wire-body {
+    margin: 0.5rem 0 0;
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .arch-wire-body:empty {
+    display: none;
+  }
+  .arch-wire-note {
+    margin-top: 0.5rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .arch-card-title {
+    font-weight: 600;
+  }
+  .arch-card-text {
+    margin: 0.25rem 0 0;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .arch-card-facts {
+    margin: 0.5rem 0 0;
+    padding-inline-start: 1.1rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .arch-card-facts:empty {
+    display: none;
+  }
+  .arch-card-code {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-accent-high);
+  }
+  /* On a phone the SVG is drawn at about half size: enlarge its only text. */
+  @media (max-width: 40rem) {
+    .arch-pc-label {
+      font-size: 22px;
+    }
+  }
+</style>
+
+<script>
+  type Block = { name: string; text: string; facts: string[]; path: string; href: string | null };
+  type Step = { label: string; tone: 'up' | 'down'; route: number[]; hops: string[]; topic: string; note: string; body: string };
+  type Data = { blocks: Block[]; steps: Step[]; X: number[]; Y: number };
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-arch]')) {
+    const { blocks, steps, X, Y } = JSON.parse(root.dataset.arch!) as Data;
+    const q = <T extends Element>(s: string) => root.querySelector<T>(s)!;
+    const dot = q<SVGCircleElement>('.arch-dot');
+    const hop = q<HTMLElement>('.arch-hop');
+    const stepButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-step]')];
+    let busy = false;
+
+    const select = (i: number) => {
+      const b = blocks[i];
+      q('.arch-card-title').textContent = b.name;
+      q('.arch-card-text').textContent = b.text;
+      q('.arch-card-facts').replaceChildren(
+        ...b.facts.map((f) => Object.assign(document.createElement('li'), { textContent: f })),
+      );
+      const link = q<HTMLAnchorElement>('.arch-card-code');
+      link.hidden = !b.href;
+      if (b.href) {
+        link.href = b.href;
+        link.textContent = `Ver el código: ${b.path}`;
+      }
+      for (const el of root.querySelectorAll<Element>('.arch-block, .arch-labels button')) {
+        el.classList.toggle('is-on', Number((el as HTMLElement).dataset.block) === i);
+      }
+    };
+
+    const move = (a: number, b: number) =>
+      new Promise<void>((done) => {
+        if (reducedMotion.matches) {
+          dot.setAttribute('cx', String(X[b]));
+          dot.setAttribute('cy', String(Y));
+          setTimeout(done, 600);
+          return;
+        }
+        const t0 = performance.now();
+        const frame = (now: number) => {
+          const t = Math.min(1, (now - t0) / 850);
+          const e = ease(t);
+          dot.setAttribute('cx', String(X[a] + (X[b] - X[a]) * e));
+          dot.setAttribute('cy', String(Y - Math.sin(Math.PI * e) * 20));
+          if (t < 1) requestAnimationFrame(frame);
+          else done();
+        };
+        requestAnimationFrame(frame);
+      });
+
+    const run = async (k: number) => {
+      const s = steps[k];
+      stepButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.step === String(k))));
+      q('.arch-wire-title').textContent = `Mensaje en el cable · ${s.label}`;
+      q('.arch-wire-topic').textContent = s.topic;
+      q('.arch-wire-body').textContent = s.body;
+      q('.arch-wire-note').textContent = s.note;
+      dot.classList.toggle('is-down', s.tone === 'down');
+      select(s.route[0]);
+      for (let i = 0; i < s.hops.length; i++) {
+        hop.textContent = `${blocks[s.route[i]].name} → ${blocks[s.route[i + 1]].name} · ${s.hops[i]}`;
+        await move(s.route[i], s.route[i + 1]);
+        select(s.route[i + 1]);
+      }
+    };
+
+    const play = async (which: string) => {
+      if (busy) return;
+      busy = true;
+      dot.setAttribute('cx', String(X[0]));
+      dot.setAttribute('cy', String(Y));
+      dot.classList.add('is-moving');
+      if (which === 'all') {
+        for (let k = 0; k < steps.length; k++) await run(k);
+        hop.textContent = 'Ciclo completo: la orden quedó confirmada.';
+      } else {
+        await run(Number(which));
+      }
+      dot.classList.remove('is-moving');
+      busy = false;
+    };
+
+    stepButtons.forEach((b) => b.addEventListener('click', () => play(b.dataset.step!)));
+    for (const el of root.querySelectorAll<HTMLElement | SVGElement>('[data-block]')) {
+      const i = Number(el.dataset.block);
+      el.addEventListener('click', () => select(i));
+      el.addEventListener('keydown', (e) => {
+        const key = (e as KeyboardEvent).key;
+        if (key === 'Enter' || key === ' ') {
+          e.preventDefault();
+          select(i);
+        }
+      });
+    }
+
+    // Play the whole cycle once the first time the diagram comes into view.
+    if (!reducedMotion.matches && 'IntersectionObserver' in window) {
+      const seen = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          seen.disconnect();
+          play('all');
+        }
+      }, { threshold: 0.6 });
+      seen.observe(root);
+    }
+  }
+</script>

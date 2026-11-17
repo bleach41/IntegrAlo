@@ -2,7 +2,7 @@
 title: Primera conexión
 description: Cómo vincular la app web o el teléfono con el servidor.
 sidebar:
-  order: 3
+  order: 4
 ---
 
 Con el servidor en marcha, la app necesita saber dónde está. Hay tres formas de conectarla, tanto

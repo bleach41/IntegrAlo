@@ -1,0 +1,28 @@
+---
+title: Cómo funciona
+description: Las piezas de IntegrAlo y los tres mensajes que viajan entre ellas, en un diagrama interactivo.
+sidebar:
+  order: 2
+---
+
+import Architecture from '../../../components/Architecture.astro';
+
+IntegrAlo tiene cuatro piezas. El **nodo ESP32** está en la habitación, el **broker MQTT** y el
+**núcleo** corren en el PC como un único servicio de Windows, y la **app** se usa desde el móvil o
+desde el navegador. Toca cada pieza para ver qué hace, o reproduce los mensajes para verlos viajar.
+
+<Architecture />
+
+## Los tres mensajes del caso base
+
+1. **Telemetría.** El nodo publica periódicamente sus lecturas. El núcleo las guarda y avisa a la
+   app al momento.
+2. **Orden.** Desde la app se pide un cambio, por ejemplo una nueva consigna. El núcleo la registra,
+   le da un identificador (`cmdId`) y la publica para ese nodo.
+3. **Confirmación.** El nodo aplica la orden y responde con el mismo `cmdId` y el estado que quedó.
+   Solo entonces la app la muestra como confirmada. Si no llega respuesta, la orden queda «sin
+   confirmar» y nunca se aplica tarde.
+
+Los mensajes de ejemplo del diagrama se comprueban contra el contrato de la plataforma cada vez
+que se construye esta web, así que tienen siempre la forma exacta que espera el núcleo. La lista
+completa de temas está en la [referencia del contrato MQTT](../../referencia/contrato-mqtt/).

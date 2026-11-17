@@ -2,7 +2,7 @@
 title: Instalación
 description: Cómo instalar el servidor de IntegrAlo en Windows.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 El servidor se instala en un equipo Windows de la red local y queda como servicio de inicio

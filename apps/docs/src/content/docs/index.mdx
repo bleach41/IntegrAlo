@@ -28,6 +28,7 @@ hero:
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+import Architecture from '../../components/Architecture.astro';
 
 <CardGrid>
   <Card title="Modular" icon="puzzle">
@@ -45,3 +46,10 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
     La misma app desde el navegador o desde el teléfono, vinculada al servidor con un código QR.
   </Card>
 </CardGrid>
+
+## Cómo viaja una orden
+
+La temperatura sube del nodo a la app, la orden baja y la confirmación vuelve. Toca cada pieza
+para ver qué hace. Más detalle en [Cómo funciona](empezar/como-funciona/).
+
+<Architecture />

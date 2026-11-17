@@ -19,4 +19,5 @@ Todo funciona dentro de la red local, sin servicios externos.
 
 ## Siguiente paso
 
-Instala el servidor siguiendo la [guía de instalación](../instalacion/).
+Mira en [Cómo funciona](../como-funciona/) cómo se comunican las piezas, o instala el servidor
+siguiendo la [guía de instalación](../instalacion/).
